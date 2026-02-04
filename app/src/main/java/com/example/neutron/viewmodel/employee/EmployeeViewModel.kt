@@ -79,4 +79,13 @@ class EmployeeViewModel @Inject constructor(
     fun getEmployeeById(id: Long): Flow<Employee?> {
         return repository.getEmployeeById(id)
     }
+
+    fun triggerCloudSync() {
+        val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        user?.let {
+            viewModelScope.launch {
+                repository.syncEmployeesToCloud(it.uid)
+            }
+        }
+    }
 }

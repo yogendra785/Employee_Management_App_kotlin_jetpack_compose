@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.neutron.data.repository.EmployeeRepository
 import com.example.neutron.domain.model.Employee
+import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,35 +65,30 @@ class AddEmployeeViewModel @Inject constructor(
     }
 
     fun onSaveEmployee() {
-        val currentState = _uiState.value
-        if (!validate(currentState)) return
-
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val emailExists = repository.isEmailExists(currentState.email.trim())
-            if (emailExists) {
-                _uiState.update { it.copy(emailError = "Email already registered", isLoading = false) }
-                return@launch
-            }
-
             val employee = Employee(
-                id = 0,
-                firebaseUid = "",
-                name = currentState.name.trim(),
-                email = currentState.email.trim(),
-                role = currentState.role.trim(),
-                department = currentState.department.trim(),
-                isActive = currentState.isActive,
-                password = currentState.password,
-                createdAt = System.currentTimeMillis(),
-                imagePath = null // The repository will update this path
+                name = uiState.value.name,
+                email = uiState.value.email,
+                salary = uiState.value.salary.toDoubleOrNull() ?: 0.0,
+                department = uiState.value.department,
+                role = uiState.value.role,
+                isActive = uiState.value.isActive,
+                firebaseUid = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                password = uiState.value.password
             )
 
-            // ✅ Corrected: Passing both the employee and the selected Uri
-            repository.insertEmployeeWithImage(employee, currentState.selectedImageUri)
+            // 1. Save to Local Room DB
+            repository.insertEmployeeWithImage(employee, uiState.value.selectedImageUri)
 
-            _uiState.update { it.copy(isSuccess = true, isLoading = false) }
+            // 2. 🔹 TRIGGER CLOUD SYNC IMMEDIATELY
+            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+            currentUid?.let { uid ->
+                repository.syncEmployeesToCloud(uid)
+            }
+
+            _uiState.update { it.copy(isLoading = false, isSuccess = true) }
         }
     }
 

@@ -1,5 +1,7 @@
 package com.example.neutron.data.repository
 
+
+import com.google.firebase.firestore.FirebaseFirestore
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -7,6 +9,7 @@ import com.example.neutron.data.local.dao.AttendanceDao
 import com.example.neutron.data.local.dao.EmployeeDao
 import com.example.neutron.data.local.dao.SalaryDao
 import com.example.neutron.data.local.entity.AttendanceEntity
+import com.example.neutron.data.local.entity.EmployeeEntity
 import com.example.neutron.data.local.entity.SalaryEntity
 import com.example.neutron.data.mapper.toEmployee
 import com.example.neutron.data.mapper.toEmployeeEntity
@@ -18,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
@@ -28,9 +32,10 @@ class EmployeeRepository(
     private val dao: EmployeeDao,
     private val salaryDao: SalaryDao,
     private val attendanceDao: AttendanceDao,
-    private val context: Context
-) {
+    private val context: Context,
 
+) {
+    private val firestore = FirebaseFirestore.getInstance()
     // --- Employee Core Functions ---
 
     fun getAllEmployees(): Flow<List<Employee>> {
@@ -147,4 +152,63 @@ class EmployeeRepository(
         val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
         return sdf.format(cal.time).equals(monthYearString, ignoreCase = true)
     }
+    suspend fun syncEmployeesToCloud(adminUid: String) = withContext(Dispatchers.IO) {
+        try {
+            val localEmployees = dao.getAllEmployeesList()
+
+            localEmployees.forEach { entity ->
+                val employeeMap = hashMapOf(
+                    "employeeId" to entity.id.toString(),
+                    "name" to entity.name,
+                    "email" to entity.email,
+                    "salary" to entity.salary,
+                    "role" to entity.role,
+                    "createdAt" to entity.createdAt
+                )
+
+                // 🔹 This path creates a separate document for EACH employee
+                firestore.collection("users")
+                    .document(adminUid)
+                    .collection("employees") // Collection name
+                    .document(entity.id.toString()) // Document ID (the employee's ID)
+                    .set(employeeMap)
+                    .addOnSuccessListener { Log.d("Firebase", "Sync Success for ${entity.name}") }
+                    .addOnFailureListener { e -> Log.e("Firebase", "Sync Failed", e) }
+            }
+        } catch (e: Exception) {
+            Log.e("Sync", "Error: ${e.message}")
+        }
+    }
+    suspend fun restoreEmployeesFromCloud(adminUid: String) = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = firestore.collection("users")
+                .document(adminUid)
+                .collection("employees")
+                .get()
+                .await()
+
+            val remoteEmployees = snapshot.documents.mapNotNull { doc ->
+                // Manual mapping from Firestore document to Entity
+                EmployeeEntity(
+                    id = doc.getLong("id") ?: 0L,
+                    firebaseUid = doc.getString("firebaseUid") ?: "",
+                    name = doc.getString("name") ?: "",
+                    email = doc.getString("email") ?: "",
+                    role = doc.getString("role") ?: "",
+                    department = doc.getString("department") ?: "",
+                    salary = doc.getDouble("salary") ?: 0.0,
+                    isActive = doc.getBoolean("isActive") ?: true,
+                    createdAt = doc.getLong("createdAt") ?: System.currentTimeMillis(),
+                    password = doc.getString("password") ?: ""
+                )
+            }
+
+            // Batch insert into local Room DB
+            remoteEmployees.forEach { dao.insertEmployee(it) }
+            Log.d("Restore", "Successfully restored ${remoteEmployees.size} employees")
+        } catch (e: Exception) {
+            Log.e("Restore", "Error restoring from cloud: ${e.message}")
+        }
+    }
+
 }

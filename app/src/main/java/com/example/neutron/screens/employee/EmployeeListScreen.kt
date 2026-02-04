@@ -90,7 +90,10 @@ fun EmployeeListScreen(
                 ) {
                     // 🔹 Dashboard Section
                     item {
-                        DashboardHeader(stats = stats)
+                        DashboardHeader(
+                            stats= stats,
+                            onSyncClick = { viewModel.triggerCloudSync() }
+                        )
 
                         Text(
                             text = "Manage Staff",
