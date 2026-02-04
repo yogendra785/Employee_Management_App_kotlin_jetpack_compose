@@ -5,16 +5,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -29,7 +32,6 @@ fun AddEmployeeScreen(
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
     var passwordVisible by remember { mutableStateOf(false) }
 
     // Image picker launcher
@@ -55,36 +57,47 @@ fun AddEmployeeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
             IconButton(onClick = onBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
             }
-            Text("New Employee", style = MaterialTheme.typography.titleLarge)
+            Text("New Employee", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         }
 
-        // 🔹 Image Picker Button inside Column
-        Button(onClick = { launcher.launch("image/*") }) {
-            Text("Select Profile Image")
+        // Image Picker Section
+        Card(
+            onClick = { launcher.launch("image/*") },
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (uiState.selectedImageUri != null) {
+                    AsyncImage(
+                        model = uiState.selectedImageUri,
+                        contentDescription = "Selected Profile Image",
+                        modifier = Modifier.size(100.dp).align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    Text("Tap to select profile photo", style = MaterialTheme.typography.labelLarge)
+                }
+            }
         }
 
-        // 🔹 Show selected image preview if available
-        uiState.selectedImageUri?.let { uri ->
-            AsyncImage(
-                model = uri,
-                contentDescription = "Selected Profile Image",
-                modifier = Modifier
-                    .size(120.dp)
-                    .align(Alignment.CenterHorizontally)
-            )
-        }
-
+        // Basic Info Fields
         OutlinedTextField(
             value = uiState.name,
             onValueChange = viewModel::onNameChange,
             label = { Text("Full Name") },
             isError = uiState.nameError != null,
             supportingText = { uiState.nameError?.let { Text(it) } },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         OutlinedTextField(
@@ -93,7 +106,9 @@ fun AddEmployeeScreen(
             label = { Text("Email Address") },
             isError = uiState.emailError != null,
             supportingText = { uiState.emailError?.let { Text(it) } },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            singleLine = true
         )
 
         OutlinedTextField(
@@ -108,35 +123,46 @@ fun AddEmployeeScreen(
             trailingIcon = {
                 val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(imageVector = image, contentDescription = if (passwordVisible) "Hide password" else "Show password")
+                    Icon(imageVector = image, contentDescription = null)
                 }
-            }
+            },
+            singleLine = true
         )
 
+        // 🔹 Salary Field (The Key Addition for Dashboard)
+        OutlinedTextField(
+            value = uiState.salary,
+            onValueChange = viewModel::onSalaryChange,
+            label = { Text("Monthly Salary (₹)") },
+            placeholder = { Text("e.g. 25000") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null) },
+            singleLine = true
+        )
 
         OutlinedTextField(
             value = uiState.role,
             onValueChange = viewModel::onRoleChange,
-            label = { Text("Job Role (e.g. Manager)") },
-            modifier = Modifier.fillMaxWidth()
+            label = { Text("Job Role") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
         OutlinedTextField(
             value = uiState.department,
             onValueChange = viewModel::onDepartmentChange,
             label = { Text("Department") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
         )
 
+        // Active Status Toggle
         Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            )
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -144,28 +170,22 @@ fun AddEmployeeScreen(
                     Text("Active Status", style = MaterialTheme.typography.titleSmall)
                     Text("Currently employed", style = MaterialTheme.typography.bodySmall)
                 }
-                Switch(
-                    checked = uiState.isActive,
-                    onCheckedChange = viewModel::onActiveChange
-                )
+                Switch(checked = uiState.isActive, onCheckedChange = viewModel::onActiveChange)
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = { viewModel.onSaveEmployee() },
             enabled = uiState.isSaveEnabled && !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(12.dp)
         ) {
             if (uiState.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp
-                )
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
             } else {
-                Text("Save Employee")
+                Text("Save Employee", style = MaterialTheme.typography.titleMedium)
             }
         }
     }

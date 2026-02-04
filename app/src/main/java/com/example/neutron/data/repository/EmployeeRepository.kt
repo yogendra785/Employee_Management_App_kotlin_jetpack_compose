@@ -5,12 +5,13 @@ import android.net.Uri
 import android.util.Log
 import com.example.neutron.data.local.dao.AttendanceDao
 import com.example.neutron.data.local.dao.EmployeeDao
-import com.example.neutron.data.local.dao.SalaryDao // Import this
+import com.example.neutron.data.local.dao.SalaryDao
 import com.example.neutron.data.local.entity.AttendanceEntity
 import com.example.neutron.data.local.entity.SalaryEntity
 import com.example.neutron.data.mapper.toEmployee
 import com.example.neutron.data.mapper.toEmployeeEntity
 import com.example.neutron.domain.model.AttendanceStatus
+import com.example.neutron.domain.model.DashboardStats
 import com.example.neutron.domain.model.Employee
 import com.example.neutron.domain.model.SalaryRecord
 import kotlinx.coroutines.Dispatchers
@@ -26,15 +27,14 @@ import java.util.Locale
 class EmployeeRepository(
     private val dao: EmployeeDao,
     private val salaryDao: SalaryDao,
-
     private val attendanceDao: AttendanceDao,
-    private val context: Context,
+    private val context: Context
 ) {
 
-    // --- Employee Functions ---
+    // --- Employee Core Functions ---
 
     fun getAllEmployees(): Flow<List<Employee>> {
-        return dao.getAllEmployees().map { entities ->
+        return dao.getAllEmployeesFlow().map { entities ->
             entities.map { it.toEmployee() }
         }
     }
@@ -79,20 +79,9 @@ class EmployeeRepository(
         dao.updateEmployeeStatus(id, isActive)
     }
 
-    suspend fun isEmailExists(email: String): Boolean {
-        return dao.isEmailExists(email)
-    }
+    suspend fun isEmailExists(email: String): Boolean = dao.isEmailExists(email)
 
-    suspend fun findEmployeeById(id: Long): Employee? {
-        return try {
-            dao.getEmployeeById(id).map { it?.toEmployee() }.firstOrNull()
-        } catch (e: Exception) {
-            Log.e("EmployeeRepository", "Error finding employee by ID: $id", e)
-            null
-        }
-    }
-
-    // --- Salary Functions ---
+    // --- Salary & Payroll Functions ---
 
     suspend fun addSalaryRecord(salary: SalaryRecord) = withContext(Dispatchers.IO) {
         val entity = SalaryEntity(
@@ -103,37 +92,59 @@ class EmployeeRepository(
             absentDays = salary.absentDays,
             perDayDeduction = salary.perDayDeduction
         )
-        // 2. Used salaryDao instead of dao
         salaryDao.insertSalary(entity)
     }
-    // 1. Logic to count absences for a specific month
-    // 1. Logic to count absences for a specific month
+
     suspend fun getAbsentCount(employeeId: Long, month: String): Int = withContext(Dispatchers.IO) {
         try {
-            // 🔹 FIX: Changed 'dao' to 'attendanceDao'
-            val list: List<AttendanceEntity> = attendanceDao.getAttendanceByEmployee(employeeId).firstOrNull() ?: emptyList()
-
-            list.count { attendance: AttendanceEntity ->
-                // Use .name if status is an Enum in your Entity, or just the string comparison
+            val list = attendanceDao.getAttendanceByEmployee(employeeId).firstOrNull() ?: emptyList()
+            list.count { attendance ->
                 attendance.status == AttendanceStatus.ABSENT.name && isDateInMonth(attendance.date, month)
             }
         } catch (e: Exception) {
-            Log.e("EmployeeRepository", "Error counting absences", e)
             0
         }
     }
 
-    private fun isDateInMonth(timestamp: Long, monthYearString: String): Boolean {
-        val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
-        // SimpleDateFormat fix
-        val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
-        val formattedDate = sdf.format(cal.time)
-        return formattedDate.equals(monthYearString, ignoreCase = true)
+    fun calculateNetSalary(base: Double, advance: Double, absentDays: Int, perDay: Double): Double {
+        return base - (absentDays * perDay) - advance
     }
 
-    // In EmployeeRepository.kt
-    fun calculateNetSalary(base: Double, advance: Double, absentDays: Int, perDay: Double): Double {
-        val totalDeduction = absentDays * perDay
-        return base - totalDeduction - advance
+    // --- Dashboard Analytics Functions ---
+
+    suspend fun getDashboardStats(month: String): DashboardStats = withContext(Dispatchers.IO) {
+        try {
+            val allEntities = dao.getAllEmployeesList()
+            val allAttendance = attendanceDao.getAllAttendanceList()
+
+            val allEmployees = allEntities.map { it.toEmployee() }
+            val activeEmployees = allEmployees.filter { it.isActive }
+
+            val totalPayout = activeEmployees.sumOf { it.salary }
+
+            val monthAttendance = allAttendance.filter { isDateInMonth(it.date, month) }
+            val rate = if (monthAttendance.isNotEmpty()) {
+                val presentCount = monthAttendance.count { it.status == AttendanceStatus.PRESENT.name }
+                (presentCount.toFloat() / monthAttendance.size.toFloat()) * 100
+            } else 0f
+
+            DashboardStats(
+                totalEmployees = allEmployees.size,
+                activeEmployees = activeEmployees.size,
+                estimatedMonthlyPayout = totalPayout,
+                averageAttendanceRate = rate
+            )
+        } catch (e: Exception) {
+            Log.e("EmployeeRepository", "Stats error: ${e.message}")
+            DashboardStats()
+        }
+    }
+
+    // --- Helper Logic ---
+
+    private fun isDateInMonth(timestamp: Long, monthYearString: String): Boolean {
+        val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
+        val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        return sdf.format(cal.time).equals(monthYearString, ignoreCase = true)
     }
 }

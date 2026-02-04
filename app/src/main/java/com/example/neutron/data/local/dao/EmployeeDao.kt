@@ -7,13 +7,24 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface EmployeeDao {
 
+    /**
+     * Used for the UI list. Automatically updates the screen
+     * whenever an employee is added, removed, or updated.
+     */
     @Query("SELECT * FROM employees ORDER BY name ASC")
-    fun getAllEmployees(): Flow<List<EmployeeEntity>>
+    fun getAllEmployeesFlow(): Flow<List<EmployeeEntity>>
+
+    /**
+     * Used for background calculations (Dashboard Analytics).
+     * Must be 'suspend' so it doesn't block the main thread.
+     */
+    @Query("SELECT * FROM employees")
+    suspend fun getAllEmployeesList(): List<EmployeeEntity>
 
     @Query("SELECT * FROM employees WHERE id = :employeeId LIMIT 1")
     fun getEmployeeById(employeeId: Long): Flow<EmployeeEntity?>
 
-    @Insert(onConflict = OnConflictStrategy.IGNORE) // Ignore if ID already exists
+    @Insert(onConflict = OnConflictStrategy.REPLACE) // 🔹 Use REPLACE to handle updates smoothly
     suspend fun insertEmployee(employee: EmployeeEntity): Long
 
     @Update

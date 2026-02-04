@@ -11,6 +11,7 @@ data class AddEmployeeUiState(
     val passwordError: String? = null,
     val role: String = "STAFF",
     val department: String = "",
+    val salary: String = "",
     val isActive: Boolean = true,
     val selectedImageUri: Uri? = null,
     val isSaveEnabled: Boolean = false,

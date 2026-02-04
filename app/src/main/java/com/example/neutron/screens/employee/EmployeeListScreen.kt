@@ -1,8 +1,6 @@
 package com.example.neutron.screens.employee
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,9 +19,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.neutron.domain.model.Employee
 import com.example.neutron.navigation.NavRoutes
+import com.example.neutron.screens.dashboard.DashboardHeader
 import com.example.neutron.viewmodel.employee.EmployeeViewModel
 import kotlinx.coroutines.launch
+import com.example.neutron.domain.model.DashboardStats
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +32,10 @@ fun EmployeeListScreen(
     viewModel: EmployeeViewModel,
     navigate: (String) -> Unit
 ) {
-    val employees by viewModel.employees.collectAsState()
+    // 🔹 Explicitly collect flows as state
+    val employees by viewModel.employees.collectAsState(initial = emptyList())
+    val stats by viewModel.dashboardStats.collectAsState(initial = DashboardStats())
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -42,19 +46,16 @@ fun EmployeeListScreen(
             LargeTopAppBar(
                 title = {
                     Column {
+                        Text("Staff Members", fontWeight = FontWeight.Bold)
                         Text(
-                            "Staff Members",
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "${employees.size} active personnel",
+                            "${employees.size} personnel enrolled",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Add search logic later if needed */ }) {
+                    IconButton(onClick = { /* Search logic */ }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
                 },
@@ -85,30 +86,47 @@ fun EmployeeListScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(16.dp)
+                    contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    items(employees, key = { it.id }) { employee ->
-                        // Enhanced Employee Card
-                        EmployeeCard(
-                            employee = employee,
-                            onToggleActive = { viewModel.toggleEmployeeStatus(employee) },
-                            onDelete = {
-                                viewModel.deleteEmployee(employee)
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "${employee.name} removed",
-                                        actionLabel = "Undo",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.undoDelete()
-                                    }
-                                }
-                            },
-                            onClick = {
-                                navigate(NavRoutes.createDetailRoute(employee.id))
-                            }
+                    // 🔹 Dashboard Section
+                    item {
+                        DashboardHeader(stats = stats)
+
+                        Text(
+                            text = "Manage Staff",
+                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
                         )
+                    }
+
+                    // 🔹 Employee List Section
+                    items(
+                        items = employees,
+                        key = { employee: Employee -> employee.id }
+                    ) { employee: Employee ->
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            EmployeeCard(
+                                employee = employee,
+                                onToggleActive = { viewModel.toggleEmployeeStatus(employee) },
+                                onDelete = {
+                                    viewModel.deleteEmployee(employee)
+                                    scope.launch {
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "${employee.name} removed",
+                                            actionLabel = "Undo"
+                                        )
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            viewModel.undoDelete()
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    navigate(NavRoutes.createDetailRoute(employee.id))
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -135,17 +153,12 @@ fun EmptyStateView() {
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.outline
         )
-        Text(
-            "Tap the + button to add your first employee",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.outline
-        )
     }
 }
 
 @Composable
 fun EmployeeCard(
-    employee: com.example.neutron.domain.model.Employee, // Ensure path is correct
+    employee: Employee,
     onToggleActive: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit
@@ -162,12 +175,9 @@ fun EmployeeCard(
         )
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Initial Avatar with dynamic background
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -190,18 +200,10 @@ fun EmployeeCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = employee.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = employee.department,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                Text(employee.name, fontWeight = FontWeight.Bold)
+                Text(employee.department, style = MaterialTheme.typography.bodySmall)
 
-                // Active/Inactive Badge
+                // Status Badge
                 Surface(
                     modifier = Modifier.padding(top = 4.dp),
                     shape = CircleShape,
@@ -216,13 +218,9 @@ fun EmployeeCard(
                 }
             }
 
-            // Quick Actions Toggle
             Switch(
                 checked = employee.isActive,
-                onCheckedChange = { onToggleActive() },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary
-                )
+                onCheckedChange = { onToggleActive() }
             )
         }
     }

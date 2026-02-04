@@ -7,29 +7,31 @@ import com.example.neutron.domain.model.Employee
 fun EmployeeEntity.toEmployee(): Employee {
     return Employee(
         id = id,
+        firebaseUid = firebaseUid,
         name = name,
         email = email,
         role = role,
         department = department,
+        salary = salary, // 🔹 Pass salary here
         isActive = isActive,
         createdAt = createdAt,
-        firebaseUid = firebaseUid,
-        imagePath = imagePath,
-        password = ""
+        password = password,
+        imagePath = imagePath
     )
 }
 
-// Domain model → Entity
 fun Employee.toEmployeeEntity(): EmployeeEntity {
     return EmployeeEntity(
         id = id,
+        firebaseUid = firebaseUid,
         name = name,
         email = email,
         role = role,
         department = department,
+        salary = salary, // 🔹 Pass salary here
         isActive = isActive,
         createdAt = createdAt,
-       firebaseUid = firebaseUid,
+        password = password,
         imagePath = imagePath
     )
 }

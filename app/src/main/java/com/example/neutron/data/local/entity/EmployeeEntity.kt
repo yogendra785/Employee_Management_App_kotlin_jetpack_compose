@@ -7,13 +7,14 @@ import androidx.room.PrimaryKey
 data class EmployeeEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val name: String,
     val firebaseUid: String,
+    val name: String,
     val email: String,
     val role: String,
     val department: String,
+    val salary: Double, // 🔹 Added this to match your domain model
     val isActive: Boolean = true,
-    val createdAt: Long,
+    val createdAt: Long = System.currentTimeMillis(),
+    val password: String,
     val imagePath: String? = null
-
 )

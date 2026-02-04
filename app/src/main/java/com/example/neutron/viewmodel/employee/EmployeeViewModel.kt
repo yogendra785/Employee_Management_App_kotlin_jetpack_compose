@@ -3,6 +3,7 @@ package com.example.neutron.viewmodel.employee
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.neutron.data.repository.EmployeeRepository
+import com.example.neutron.domain.model.DashboardStats
 import com.example.neutron.domain.model.Employee
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -16,6 +17,9 @@ class EmployeeViewModel @Inject constructor(
 
     private var recentlyDeletedEmployee: Employee? = null
 
+    private val _dashboardStats = MutableStateFlow(DashboardStats())
+    val dashboardStats: StateFlow<DashboardStats> = _dashboardStats.asStateFlow()
+
     val employees: StateFlow<List<Employee>> =
         repository.getAllEmployees()
             .stateIn(
@@ -24,10 +28,23 @@ class EmployeeViewModel @Inject constructor(
                 initialValue = emptyList()
             )
 
-    // ✅ FIX: Changed function name and added null for the Uri
+    init {
+        loadDashboardStats()
+    }
+
+    fun loadDashboardStats() {
+        viewModelScope.launch {
+            val currentMonth = java.text.SimpleDateFormat(
+                "MMMM yyyy", java.util.Locale.getDefault()
+            ).format(java.util.Date())
+            _dashboardStats.value = repository.getDashboardStats(currentMonth)
+        }
+    }
+
     fun insertEmployee(employee: Employee) {
         viewModelScope.launch {
             repository.insertEmployeeWithImage(employee, null)
+            loadDashboardStats() // Refresh dashboard after insertion
         }
     }
 
@@ -35,6 +52,17 @@ class EmployeeViewModel @Inject constructor(
         viewModelScope.launch {
             recentlyDeletedEmployee = employee
             repository.deleteEmployee(employee)
+            loadDashboardStats() // Optional: refresh stats after deletion
+        }
+    }
+
+    fun undoDelete() {
+        recentlyDeletedEmployee?.let { employee ->
+            viewModelScope.launch {
+                repository.insertEmployeeWithImage(employee, null)
+                recentlyDeletedEmployee = null
+                loadDashboardStats() // Refresh after undo
+            }
         }
     }
 
@@ -44,16 +72,7 @@ class EmployeeViewModel @Inject constructor(
                 id = employee.id,
                 isActive = !employee.isActive
             )
-        }
-    }
-
-    // ✅ FIX: Changed function name and added null for the Uri
-    fun undoDelete() {
-        recentlyDeletedEmployee?.let { employee ->
-            viewModelScope.launch {
-                repository.insertEmployeeWithImage(employee, null)
-                recentlyDeletedEmployee = null
-            }
+            loadDashboardStats() // Refresh after status change
         }
     }
 

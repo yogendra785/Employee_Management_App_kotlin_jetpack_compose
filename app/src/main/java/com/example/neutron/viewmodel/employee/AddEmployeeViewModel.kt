@@ -122,4 +122,9 @@ class AddEmployeeViewModel @Inject constructor(
     private fun isValidEmail(email: String): Boolean {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
     }
+    fun onSalaryChange(newSalary: String) {
+        if (newSalary.all { it.isDigit() }) {
+            _uiState.update { it.copy(salary = newSalary) }
+        }
+    }
 }

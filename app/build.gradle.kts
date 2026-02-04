@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.example.neutron"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.neutron"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -54,6 +54,7 @@ dependencies {
     // HILT Dependency Injection
     implementation(libs.hilt.android)
     implementation(libs.ads.mobile.sdk)
+    implementation(libs.androidx.compose.material3)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
    //image dependency

@@ -6,6 +6,7 @@ data class Employee(
     val name: String,
     val email: String,
     val role: String,
+    val salary: Double = 0.0,
     val department: String,
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
