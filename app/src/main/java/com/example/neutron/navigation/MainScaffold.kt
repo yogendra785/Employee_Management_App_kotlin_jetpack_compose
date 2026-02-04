@@ -30,6 +30,7 @@ fun MainScaffold(
         NavHost(
             navController = appNavController,
             startDestination = NavRoutes.DASHBOARD,
+            route = "bottom_bar_graph",
             modifier = Modifier.padding(paddingValues)
         ) {
             appNavGraph(appNavController, rootNavController, authViewModel, userRole)

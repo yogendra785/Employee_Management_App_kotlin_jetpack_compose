@@ -3,12 +3,16 @@ package com.example.neutron.screens.employee
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Visibility
@@ -17,11 +21,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import com.example.neutron.viewmodel.employee.AddEmployeeViewModel
 
@@ -64,29 +70,50 @@ fun AddEmployeeScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back")
             }
-            Text("New Employee", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                "New Employee",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
         }
 
-        // Image Picker Section
-        Card(
-            onClick = { launcher.launch("image/*") },
+        // 🔹 Stylish Circular Image Picker
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable { launcher.launch("image/*") }, // Trigger picker on click
+                contentAlignment = Alignment.Center
             ) {
                 if (uiState.selectedImageUri != null) {
+                    // Show selected image
                     AsyncImage(
                         model = uiState.selectedImageUri,
-                        contentDescription = "Selected Profile Image",
-                        modifier = Modifier.size(100.dp).align(Alignment.CenterHorizontally)
+                        contentDescription = "Profile Image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 } else {
-                    Text("Tap to select profile photo", style = MaterialTheme.typography.labelLarge)
+                    // Show placeholder icon
+                    Icon(
+                        imageVector = Icons.Default.AddAPhoto,
+                        contentDescription = "Add Photo",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp)
+                    )
                 }
             }
+            Text(
+                text = if (uiState.selectedImageUri == null) "Add Photo" else "Change Photo",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
 
         // Basic Info Fields
@@ -129,7 +156,7 @@ fun AddEmployeeScreen(
             singleLine = true
         )
 
-        // 🔹 Salary Field (The Key Addition for Dashboard)
+        // 🔹 Salary Field
         OutlinedTextField(
             value = uiState.salary,
             onValueChange = viewModel::onSalaryChange,
@@ -159,7 +186,9 @@ fun AddEmployeeScreen(
 
         // Active Status Toggle
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -183,7 +212,10 @@ fun AddEmployeeScreen(
             shape = RoundedCornerShape(12.dp)
         ) {
             if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             } else {
                 Text("Save Employee", style = MaterialTheme.typography.titleMedium)
             }

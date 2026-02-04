@@ -46,6 +46,14 @@ class AddEmployeeViewModel @Inject constructor(
         updateSaveEnabledState()
     }
 
+    fun onSalaryChange(newSalary: String) {
+        // 🔹 Allow only digits for salary input
+        if (newSalary.all { it.isDigit() }) {
+            _uiState.update { it.copy(salary = newSalary) }
+            updateSaveEnabledState()
+        }
+    }
+
     fun onRoleChange(value: String) {
         _uiState.update { it.copy(role = value) }
         updateSaveEnabledState()
@@ -53,13 +61,13 @@ class AddEmployeeViewModel @Inject constructor(
 
     fun onDepartmentChange(value: String) {
         _uiState.update { it.copy(department = value) }
+        updateSaveEnabledState()
     }
 
     fun onActiveChange(value: Boolean) {
         _uiState.update { it.copy(isActive = value) }
     }
 
-    // New function to handle image selection from the UI
     fun onImageSelected(uri: Uri?) {
         _uiState.update { it.copy(selectedImageUri = uri) }
     }
@@ -68,6 +76,7 @@ class AddEmployeeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
+            // 🔹 Construct the domain model from UI state
             val employee = Employee(
                 name = uiState.value.name,
                 email = uiState.value.email,
@@ -76,19 +85,25 @@ class AddEmployeeViewModel @Inject constructor(
                 role = uiState.value.role,
                 isActive = uiState.value.isActive,
                 firebaseUid = FirebaseAuth.getInstance().currentUser?.uid ?: "",
-                password = uiState.value.password
+                password = uiState.value.password,
+                imagePath = null // Repository will populate this after saving the file
             )
 
-            // 1. Save to Local Room DB
-            repository.insertEmployeeWithImage(employee, uiState.value.selectedImageUri)
+            try {
+                // 1. Save to Local Room DB (Handles image file creation)
+                repository.insertEmployeeWithImage(employee, uiState.value.selectedImageUri)
 
-            // 2. 🔹 TRIGGER CLOUD SYNC IMMEDIATELY
-            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
-            currentUid?.let { uid ->
-                repository.syncEmployeesToCloud(uid)
+                // 2. Trigger Cloud Sync Immediately for Firebase
+                val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+                currentUid?.let { uid ->
+                    repository.syncEmployeesToCloud(uid)
+                }
+
+                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false) }
+                // Handle potential errors here (e.g., showing a snackbar)
             }
-
-            _uiState.update { it.copy(isLoading = false, isSuccess = true) }
         }
     }
 
@@ -98,29 +113,19 @@ class AddEmployeeViewModel @Inject constructor(
 
     private fun updateSaveEnabledState() {
         _uiState.update { state ->
+            // 🔹 Ensure all mandatory fields are filled and error-free
             state.copy(isSaveEnabled = state.name.isNotBlank() &&
                     state.email.isNotBlank() &&
                     state.role.isNotBlank() &&
                     state.password.isNotBlank() &&
+                    state.salary.isNotBlank() && // Added salary validation
                     state.nameError == null &&
                     state.emailError == null &&
                     state.passwordError == null)
         }
     }
 
-    private fun validate(state: AddEmployeeUiState): Boolean {
-        val nameValid = state.name.trim().length >= 3
-        val emailValid = isValidEmail(state.email.trim())
-        val passwordValid = state.password.length >= 6
-        return nameValid && emailValid && state.role.isNotBlank() && passwordValid
-    }
-
     private fun isValidEmail(email: String): Boolean {
         return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
-    }
-    fun onSalaryChange(newSalary: String) {
-        if (newSalary.all { it.isDigit() }) {
-            _uiState.update { it.copy(salary = newSalary) }
-        }
     }
 }

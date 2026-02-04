@@ -36,27 +36,28 @@ fun BottomBar(
         val currentRoute = navBackStackEntry?.destination?.route
 
         items.forEach { item ->
-            // Highlight the icon if it matches the current route
-            val isSelected = currentRoute == item.route ||
-                (item.route == NavRoutes.DASHBOARD && currentRoute == null)
+            // 🔹 FIX 1: Better selection logic
+            val isSelected = currentRoute == item.route
 
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
-                    navController.navigate(item.route) {
-                        // Pop up to dashboard to avoid stacking screens
-                        popUpTo(NavRoutes.DASHBOARD) {
-                            saveState = true
+
+                    if (currentRoute != item.route) {
+                        navController.navigate(item.route) {
+                            // Pop up to the start destination (DASHBOARD)
+                            // to avoid building up a large stack of screens
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            // Restore state when reselecting a previously selected item
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
                 },
                 icon = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title
-                    )
+                    Icon(imageVector = item.icon, contentDescription = item.title)
                 },
                 label = {
                     Text(text = item.title)
