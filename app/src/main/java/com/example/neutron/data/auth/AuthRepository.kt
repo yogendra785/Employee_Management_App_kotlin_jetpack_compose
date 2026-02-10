@@ -6,24 +6,35 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Singleton // 🔹 Ensures only one instance exists for the whole app
-class AuthRepository @Inject constructor() { // 🔹 Added @Inject constructor
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+@Singleton
+class AuthRepository @Inject constructor(
+    private val auth: FirebaseAuth // 🔹 Injected via Hilt for cleaner architecture
+) {
 
+    /**
+     * Returns the current Firebase user session.
+     */
     fun getCurrentUser(): FirebaseUser? = auth.currentUser
 
+    /**
+     * Authenticates a user with email and password.
+     * Used by the AuthViewModel after the Employee ID lookup.
+     */
     suspend fun login(email: String, password: String): Result<FirebaseUser?> {
         return try {
-            val result = auth.signInWithEmailAndPassword(email, password).await()
+            val result = auth.signInWithEmailAndPassword(email.trim(), password.trim()).await()
             Result.success(result.user)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
+    /**
+     * Creates a new Firebase Authentication account.
+     */
     suspend fun signup(email: String, password: String): Result<FirebaseUser?> {
         return try {
-            val result = auth.createUserWithEmailAndPassword(email, password).await()
+            val result = auth.createUserWithEmailAndPassword(email.trim(), password.trim()).await()
             Result.success(result.user)
         } catch (e: Exception) {
             Result.failure(e)
@@ -34,5 +45,8 @@ class AuthRepository @Inject constructor() { // 🔹 Added @Inject constructor
         auth.signOut()
     }
 
+    /**
+     * Simple check to see if a session exists.
+     */
     fun isLoggedIn(): Boolean = auth.currentUser != null
 }

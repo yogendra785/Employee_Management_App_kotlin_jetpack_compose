@@ -17,9 +17,14 @@ class AttendanceViewModel @Inject constructor(
     private val repository: AttendanceRepository
 ) : ViewModel() {
 
+    // 1. Reactive State for the selected date
     private val _selectedDate = MutableStateFlow(startOfToday())
     val selectedDate: StateFlow<Long> = _selectedDate.asStateFlow()
 
+    /**
+     * 2. attendanceList is a reactive stream that updates whenever the date changes.
+     * We use flatMapLatest to cancel previous database fetches if the user quickly scrolls dates.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     val attendanceList: StateFlow<List<Attendance>> =
         selectedDate
@@ -36,6 +41,9 @@ class AttendanceViewModel @Inject constructor(
         _selectedDate.value = date
     }
 
+    /**
+     * Persists attendance entry to the local database via the repository.
+     */
     fun markAttendance(employeeId: Long, status: AttendanceStatus) {
         viewModelScope.launch {
             val attendance = Attendance(
@@ -47,14 +55,18 @@ class AttendanceViewModel @Inject constructor(
         }
     }
 
-    // 🔹 FIXED: Fetches the FULL history for the specific employee
+    /**
+     * Transforms raw attendance records into a formatted summary.
+     * This logic is kept in the ViewModel to keep the UI layer (Screens) lightweight.
+     */
     fun getEmployeeSummary(employeeId: Long): Flow<AttendaceSummary> {
         return repository.getAttendanceForEmployee(employeeId).map { records ->
             val totalP = records.count { it.status == AttendanceStatus.PRESENT }
             val totalA = records.count { it.status == AttendanceStatus.ABSENT }
 
-            val sdf = SimpleDateFormat("MMMM yyyy", java.util.Locale.getDefault())
+            val sdf = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
 
+            // Group logs by Month and Year for the UI history list
             val history = records.groupBy {
                 val cal = Calendar.getInstance().apply { timeInMillis = it.date }
                 sdf.format(cal.time)
@@ -71,6 +83,10 @@ class AttendanceViewModel @Inject constructor(
     }
 
     companion object {
+        /**
+         * Standard helper to normalize dates to the start of the day (midnight).
+         * This prevents time-of-day offsets from breaking database queries.
+         */
         fun startOfToday(): Long {
             return Calendar.getInstance().apply {
                 set(Calendar.HOUR_OF_DAY, 0)

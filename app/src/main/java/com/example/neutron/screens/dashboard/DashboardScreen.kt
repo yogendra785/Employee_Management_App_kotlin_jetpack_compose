@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.neutron.navigation.NavRoutes
 import com.example.neutron.viewmodel.auth.AuthViewModel
@@ -30,6 +31,14 @@ fun DashboardScreen(
     authViewModel: AuthViewModel
 ) {
     val authState by authViewModel.authState.collectAsState()
+
+    // 🔹 FIXED: Improved role detection logic to ensure Employee buttons show
+    val role = remember(authState) {
+        when (val state = authState) {
+            is AuthState.Authenticated -> state.userRole
+            else -> "EMPLOYEE"
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -47,12 +56,13 @@ fun DashboardScreen(
         ) {
             Column {
                 Text(
-                    "Dashboard",
+                    text = if (role == "ADMIN") "Admin Dashboard" else "Staff Portal",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-0.5).sp
                 )
                 Text(
-                    "Neutron Management System",
+                    text = "Neutron Management System",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
@@ -60,7 +70,7 @@ fun DashboardScreen(
 
             IconButton(
                 onClick = { authViewModel.logout() },
-                modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.2f), CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Logout,
@@ -76,76 +86,73 @@ fun DashboardScreen(
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
+            // Shared Feature: Attendance
             item(span = { GridItemSpan(2) }) {
                 DashboardCard(
-                    title = "Daily Attendance",
-                    subtitle = "Mark present/absent for today",
+                    title = "Attendance",
+                    subtitle = if (role == "ADMIN") "Monitor daily staff presence" else "Mark your presence for today",
                     icon = Icons.Default.Today,
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     onClick = { navController.navigate(NavRoutes.ATTENDANCE) }
                 )
             }
 
-            val currentState = authState
-            if (currentState is AuthState.Authenticated) {
-                when (currentState.userRole) {
-                    "ADMIN" -> {
-                        item {
-                            DashboardCard(
-                                title = "Employees",
-                                subtitle = "Manage Staff",
-                                icon = Icons.Default.Groups,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                onClick = { navController.navigate(NavRoutes.EMPLOYEE) }
-                            )
-                        }
-                        item {
-                            DashboardCard(
-                                title = "Approvals",
-                                subtitle = "Review Leaves",
-                                icon = Icons.AutoMirrored.Filled.FactCheck,
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                onClick = { navController.navigate(NavRoutes.ADMIN_LEAVE_LIST) }
-                            )
-                        }
-                        // 🔹 NEW: Salary Management Card for Admin
-                        item(span = { GridItemSpan(2) }) {
-                            DashboardCard(
-                                title = "Salary Management",
-                                subtitle = "Process monthly payroll",
-                                icon = Icons.Default.Payments,
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                onClick = { navController.navigate(NavRoutes.SALARY_MANAGEMENT) }
-                            )
-                        }
-                    }
-                    "EMPLOYEE" -> {
-                        item {
-                            DashboardCard(
-                                title = "Leave",
-                                subtitle = "Apply Now",
-                                icon = Icons.Default.PostAdd,
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                onClick = { navController.navigate(NavRoutes.LEAVE_REQUEST) }
-                            )
-                        }
-                        item {
-                            DashboardCard(
-                                title = "History",
-                                subtitle = "View Status",
-                                icon = Icons.Default.History,
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                onClick = { navController.navigate(NavRoutes.MY_LEAVE_HISTORY) }
-                            )
-                        }
-                    }
+            // Role-Based UI Logic
+            if (role == "ADMIN") {
+                item {
+                    DashboardCard(
+                        title = "Employees",
+                        subtitle = "Add & Manage",
+                        icon = Icons.Default.Groups,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        onClick = { navController.navigate(NavRoutes.EMPLOYEE) }
+                    )
+                }
+                item {
+                    DashboardCard(
+                        title = "Approvals",
+                        subtitle = "Leave Requests",
+                        icon = Icons.AutoMirrored.Filled.FactCheck,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        onClick = { navController.navigate(NavRoutes.ADMIN_LEAVE_LIST) }
+                    )
+                }
+                item(span = { GridItemSpan(2) }) {
+                    DashboardCard(
+                        title = "Payroll",
+                        subtitle = "Process Monthly Salary",
+                        icon = Icons.Default.Payments,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        onClick = { navController.navigate(NavRoutes.SALARY_MANAGEMENT) }
+                    )
+                }
+            } else {
+                // 🔹 Standard Employee View
+                item {
+                    DashboardCard(
+                        title = "Request Leave",
+                        subtitle = "Submit App",
+                        icon = Icons.Default.PostAdd,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        onClick = { navController.navigate(NavRoutes.LEAVE_REQUEST) }
+                    )
+                }
+                item {
+                    DashboardCard(
+                        title = "Leave Status",
+                        subtitle = "View History",
+                        icon = Icons.Default.History,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        onClick = { navController.navigate(NavRoutes.MY_LEAVE_HISTORY) }
+                    )
                 }
             }
         }
 
-        if (authState == AuthState.Loading) {
+        if (authState is AuthState.Loading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
@@ -174,15 +181,20 @@ fun DashboardCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(28.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Column {
-                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    lineHeight = 16.sp
                 )
             }
         }

@@ -5,32 +5,32 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.neutron.viewmodel.auth.AuthState
 import com.example.neutron.viewmodel.auth.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(
+fun EmployeeLoginScreen(
     authViewModel: AuthViewModel,
-    onSignupClick: () -> Unit,
-    onEmployeeLoginClick: () -> Unit // 🔹 New navigation callback
+    onBackToAdminClick: () -> Unit
 ) {
     val authState by authViewModel.authState.collectAsState()
 
-    var email by remember { mutableStateOf("") } // 🔹 Changed from employeeId to email
+    var employeeId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -51,22 +51,22 @@ fun LoginScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Header section
+                // Branding/Header
                 Icon(
-                    imageVector = Icons.Default.AdminPanelSettings,
+                    imageVector = Icons.Default.Badge,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.secondary
                 )
 
                 Text(
-                    text = "Admin Portal",
+                    text = "Employee Login",
                     style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.secondary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Secure Management Login",
+                    text = "Enter your ID provided by Admin",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -83,16 +83,17 @@ fun LoginScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         OutlinedTextField(
-                            value = email,
-                            onValueChange = { email = it },
-                            label = { Text("Admin Email") },
-                            placeholder = { Text("admin@neutron.com") },
+                            value = employeeId,
+                            onValueChange = { employeeId = it },
+                            label = { Text("Employee ID") },
+                            placeholder = { Text("e.g. 101") },
                             modifier = Modifier.fillMaxWidth(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            // Using numeric keyboard for ease of entry
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = "Email"
+                                    imageVector = Icons.Default.Badge,
+                                    contentDescription = "ID"
                                 )
                             },
                             singleLine = true
@@ -128,38 +129,24 @@ fun LoginScreen(
                     CircularProgressIndicator()
                 } else {
                     Button(
-                        onClick = { authViewModel.adminLogin(email, password) }, // 🔹 Calls adminLogin
+                        onClick = { authViewModel.employeeLogin(employeeId, password) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        enabled = email.isNotBlank() && password.isNotBlank(),
-                        shape = MaterialTheme.shapes.medium
+                        enabled = employeeId.isNotBlank() && password.isNotBlank(),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
                     ) {
-                        Text("Login as Admin", style = MaterialTheme.typography.titleMedium)
+                        Text("Sign In", style = MaterialTheme.typography.titleMedium)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // 🔹 THE NEW BUTTON: Redirect to Employee Login
-                    OutlinedButton(
-                        onClick = onEmployeeLoginClick,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        shape = MaterialTheme.shapes.medium,
-                        border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp)
-                    ) {
-                        Icon(Icons.Default.Badge, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Login as Employee", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onBackToAdminClick) {
+                        Text("Are you an Admin? Login here")
                     }
-                }
-
-                TextButton(
-                    onClick = onSignupClick,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Text("New Admin? Create Account")
                 }
 
                 if (authState is AuthState.Error) {

@@ -1,6 +1,5 @@
 package com.example.neutron.screens.employee
 
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,12 +18,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.neutron.domain.model.DashboardStats
 import com.example.neutron.domain.model.Employee
 import com.example.neutron.navigation.NavRoutes
 import com.example.neutron.screens.dashboard.DashboardHeader
 import com.example.neutron.viewmodel.employee.EmployeeViewModel
 import kotlinx.coroutines.launch
-import com.example.neutron.domain.model.DashboardStats
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,9 +31,9 @@ fun EmployeeListScreen(
     viewModel: EmployeeViewModel,
     navigate: (String) -> Unit
 ) {
-    // 🔹 Explicitly collect flows as state
-    val employees by viewModel.employees.collectAsState(initial = emptyList())
-    val stats by viewModel.dashboardStats.collectAsState(initial = DashboardStats())
+    // 🔹 Reactive data collection
+    val employees by viewModel.employees.collectAsState()
+    val stats by viewModel.dashboardStats.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -55,7 +54,7 @@ fun EmployeeListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Search logic */ }) {
+                    IconButton(onClick = { /* Implement search filter logic here */ }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
                 },
@@ -67,9 +66,7 @@ fun EmployeeListScreen(
                 onClick = { navigate(NavRoutes.ADD_EMPLOYEE) },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Add Employee") },
-                shape = RoundedCornerShape(16.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                shape = RoundedCornerShape(16.dp)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -88,27 +85,27 @@ fun EmployeeListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    // 🔹 Dashboard Section
+                    // 🔹 Performance Summary Section
                     item {
                         DashboardHeader(
-                            stats= stats,
+                            stats = stats,
                             onSyncClick = { viewModel.triggerCloudSync() }
                         )
 
                         Text(
                             text = "Manage Staff",
-                            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+                            modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold
                         )
                     }
 
-                    // 🔹 Employee List Section
+                    // 🔹 Employee Cards Section
                     items(
                         items = employees,
-                        key = { employee: Employee -> employee.id }
-                    ) { employee: Employee ->
+                        key = { it.id }
+                    ) { employee ->
                         Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                             EmployeeCard(
                                 employee = employee,
@@ -118,7 +115,8 @@ fun EmployeeListScreen(
                                     scope.launch {
                                         val result = snackbarHostState.showSnackbar(
                                             message = "${employee.name} removed",
-                                            actionLabel = "Undo"
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Short
                                         )
                                         if (result == SnackbarResult.ActionPerformed) {
                                             viewModel.undoDelete()
@@ -134,28 +132,6 @@ fun EmployeeListScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun EmptyStateView() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.Group,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.outlineVariant
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            "No staff members yet",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.outline
-        )
     }
 }
 
@@ -181,6 +157,7 @@ fun EmployeeCard(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Profile Initials Circle
             Box(
                 modifier = Modifier
                     .size(52.dp)
@@ -203,12 +180,20 @@ fun EmployeeCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(employee.name, fontWeight = FontWeight.Bold)
-                Text(employee.department, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = employee.name,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = employee.department,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
 
                 // Status Badge
                 Surface(
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 6.dp),
                     shape = CircleShape,
                     color = if (employee.isActive) Color(0xFFE8F5E9) else Color(0xFFFFEBEE)
                 ) {
@@ -221,10 +206,46 @@ fun EmployeeCard(
                 }
             }
 
+            // Quick Status Toggle
             Switch(
                 checked = employee.isActive,
-                onCheckedChange = { onToggleActive() }
+                onCheckedChange = { onToggleActive() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary
+                )
             )
         }
+    }
+}
+
+
+@Composable
+fun EmptyStateView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // You can use a Lottie animation here for a "Premium" feel later
+        Icon(
+            imageVector = androidx.compose.material.icons.Icons.Default.Group,
+            contentDescription = null,
+            modifier = Modifier.size(100.dp),
+            tint = MaterialTheme.colorScheme.outlineVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No Employees Yet",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Text(
+            text = "Once you add staff members, they will appear here.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
     }
 }

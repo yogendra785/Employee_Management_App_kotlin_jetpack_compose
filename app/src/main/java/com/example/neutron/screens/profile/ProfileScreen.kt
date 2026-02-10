@@ -15,7 +15,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -32,12 +31,15 @@ fun ProfileScreen(
     navController: NavHostController,
     onLogout: () -> Unit
 ) {
+    // 🔹 Reactive state: Pulls directly from our cleaned AuthViewModel
     val currentUser by authViewModel.currentUser.collectAsState()
 
+    // Data handling with fallbacks
     val displayName = currentUser?.name ?: "Yogendra Singh"
-    val displayRole = currentUser?.role ?: "Admin" // Matches your Firestore role
-    val displayEmail = "yshekhawat785@gmail.com"
-    val displayId = currentUser?.id?.toString() ?: "EMP-2027" // Matches your graduation year!
+    val displayRole = currentUser?.role ?: "Admin"
+    val displayEmail = currentUser?.email ?: "yshekhawat785@gmail.com"
+    // Using employeeId if available, else standard fallback
+    val displayId = currentUser?.firebaseUid?.takeLast(8)?.uppercase() ?: "EMP-2027"
 
     Column(
         modifier = Modifier
@@ -45,7 +47,7 @@ fun ProfileScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
                         MaterialTheme.colorScheme.surface
                     )
                 )
@@ -53,7 +55,7 @@ fun ProfileScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Header
+        // Header
         Text(
             text = "My Profile",
             style = MaterialTheme.typography.headlineMedium.copy(
@@ -65,13 +67,13 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        // Advanced Avatar Section
+        // Avatar Section
         Box(contentAlignment = Alignment.BottomEnd) {
             Surface(
                 modifier = Modifier.size(120.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary,
-                shadowElevation = 8.dp
+                shadowElevation = 6.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
@@ -83,12 +85,12 @@ fun ProfileScreen(
                     )
                 }
             }
-            // Small online status indicator
+            // Online Indicator
             Surface(
                 modifier = Modifier.size(28.dp),
                 shape = CircleShape,
-                color = Color(0xFF4CAF50), // Green
-                border = ButtonDefaults.outlinedButtonBorder
+                color = Color(0xFF4CAF50), // Green for Active
+                border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
             ) {}
         }
 
@@ -106,38 +108,37 @@ fun ProfileScreen(
         ) {
             Text(
                 text = displayRole,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        // Info Section using Elevated Cards
+        // Profile Cards
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             ProfileInfoCard(icon = Icons.Default.Person, label = "Full Name", value = displayName)
             ProfileInfoCard(icon = Icons.Default.Email, label = "Email Address", value = displayEmail)
-            ProfileInfoCard(icon = Icons.Default.Badge, label = "Employee ID", value = displayId)
+            ProfileInfoCard(icon = Icons.Default.Badge, label = "Unique Identifier", value = displayId)
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Modern Logout Button
+        // Redesigned Logout Button
         Button(
             onClick = {
-                authViewModel.logout() // Signs out of Firebase
-                onLogout() // Navigates to Login
+                onLogout() // We call the passed navigation handler
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = Color.White
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.error
+            )
         ) {
             Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
             Spacer(modifier = Modifier.width(12.dp))
@@ -146,6 +147,7 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
@@ -167,7 +169,7 @@ fun ProfileInfoCard(icon: ImageVector, label: String, value: String) {
             Surface(
                 modifier = Modifier.size(48.dp),
                 shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(

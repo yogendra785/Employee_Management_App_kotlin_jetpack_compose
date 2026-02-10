@@ -1,7 +1,9 @@
 package com.example.neutron.domain.model
 
 data class Employee(
+
     val id: Long = 0,
+    val employeeId: String = "",
     val firebaseUid: String,
     val name: String,
     val email: String,

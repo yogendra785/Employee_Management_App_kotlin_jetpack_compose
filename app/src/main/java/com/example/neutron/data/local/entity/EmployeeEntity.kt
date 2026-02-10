@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class EmployeeEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val employeeId: String = "",
     val firebaseUid: String,
     val name: String,
     val email: String,

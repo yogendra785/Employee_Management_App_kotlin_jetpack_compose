@@ -12,7 +12,7 @@ class AddEmployeeViewModelFactory (
         if(modelClass.isAssignableFrom(AddEmployeeViewModel::class.java)){
             @Suppress("UNCHECKED_CAST")
             return AddEmployeeViewModel(repository) as T
-    }
+        }
         throw IllegalArgumentException("Unknown ViewModel class")
 
     }

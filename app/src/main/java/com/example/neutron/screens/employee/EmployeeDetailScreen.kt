@@ -8,8 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,13 +41,12 @@ fun EmployeeDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Employee Profile", fontWeight = FontWeight.Bold) },
+                title = { Text("Profile Detail", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                }
             )
         }
     ) { innerPadding ->
@@ -60,114 +58,150 @@ fun EmployeeDetailScreen(
                 .background(MaterialTheme.colorScheme.surface)
         ) {
             employee?.let {
-                // --- Profile Header Section ---
-                Column(
+                // --- Header: Profile Information ---
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Modern Avatar
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        // Profile Image/Initials
+                        Box(
+                            modifier = Modifier
+                                .size(110.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
                                     )
-                                )
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = it.name.take(1).uppercase(),
-                            style = MaterialTheme.typography.displayMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = it.name,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Business,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = it.department,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                }
-
-                // --- Statistics Card ---
-                PaddingValues(horizontal = 16.dp).let {
-                    Text(
-                        text = "Attendance Overview",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 24.dp, bottom = 12.dp),
-                        fontWeight = FontWeight.Bold
-                    )
-                    EmployeeAttendanceStatsCard(
-                        present = summary.totalPresent,
-                        absent = summary.totalAbsent
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // --- Monthly History Section ---
-                Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Monthly History",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Icon(Icons.Default.EventNote, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (summary.history.isEmpty()) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No attendance history recorded yet.",
-                                modifier = Modifier.padding(24.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.outline
+                                it.name.take(1).uppercase(),
+                                style = MaterialTheme.typography.displayMedium,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = it.name,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        // Status Badge
+                        Surface(
+                            shape = CircleShape,
+                            color = if (it.isActive) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text(
+                                text = if (it.isActive) "Active Member" else "Inactive",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (it.isActive) Color(0xFF2E7D32) else Color(0xFFC62828),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // --- Information Section ---
+                DetailInfoSection(
+                    email = it.email,
+                    department = it.department,
+                    role = it.role,
+                    salary = it.salary
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // --- Attendance Overview Section ---
+                Text(
+                    text = "Attendance Summary",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    fontWeight = FontWeight.Bold
+                )
+
+                EmployeeAttendanceStatsCard(
+                    present = summary.totalPresent,
+                    absent = summary.totalAbsent
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // --- History Section ---
+                Text(
+                    text = "Monthly Records",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    fontWeight = FontWeight.Bold
+                )
+
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    if (summary.history.isEmpty()) {
+                        EmptyHistoryCard()
                     } else {
                         summary.history.forEach { stats ->
                             MonthlyHistoryItem(stats)
                         }
                     }
-                    Spacer(modifier = Modifier.height(24.dp))
                 }
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+}
+
+@Composable
+fun DetailInfoSection(email: String, department: String, role: String, salary: Double) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            InfoRow(icon = Icons.Default.Email, label = "Email", value = email)
+            InfoRow(icon = Icons.Default.Badge, label = "Role", value = role)
+            InfoRow(icon = Icons.Default.Work, label = "Department", value = department)
+            InfoRow(icon = Icons.Default.Payments, label = "Salary", value = "₹${String.format("%.2f", salary)}")
+        }
+    }
+}
+
+@Composable
+fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+            Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+fun EmptyHistoryCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Text(
+            text = "No records found for this employee.",
+            modifier = Modifier.padding(24.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
     }
 }
 
@@ -189,7 +223,7 @@ fun EmployeeAttendanceStatsCard(present: Int, absent: Int) {
         ) {
             StatItem(label = "Present", value = present, color = Color(0xFF4CAF50))
 
-            // Modern vertical divider
+            // Vertical Divider
             Box(
                 modifier = Modifier
                     .width(1.dp)
@@ -228,7 +262,10 @@ fun MonthlyHistoryItem(stats: MonthlyStats) {
             .padding(vertical = 6.dp),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -242,31 +279,33 @@ fun MonthlyHistoryItem(stats: MonthlyStats) {
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Present Badge
-                SuggestionChip(
-                    onClick = { },
-                    label = { Text("${stats.presentCount} Present") },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        labelColor = Color(0xFF2E7D32)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = Color(0xFF2E7D32).copy(alpha = 0.3f)
+                // Present Count Badge
+                Surface(
+                    color = Color(0xFFE8F5E9),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = "${stats.presentCount} P",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF2E7D32),
+                        fontWeight = FontWeight.Bold
                     )
-                )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
-                // Absent Badge
-                SuggestionChip(
-                    onClick = { },
-                    label = { Text("${stats.absentCount} Absent") },
-                    colors = SuggestionChipDefaults.suggestionChipColors(
-                        labelColor = Color(0xFFD32F2F)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = Color(0xFFD32F2F).copy(alpha = 0.3f)
+                // Absent Count Badge
+                Surface(
+                    color = Color(0xFFFFEBEE),
+                    shape = CircleShape
+                ) {
+                    Text(
+                        text = "${stats.absentCount} A",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold
                     )
-                )
+                }
             }
         }
     }

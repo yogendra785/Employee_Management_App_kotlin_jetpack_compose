@@ -3,6 +3,8 @@ package com.example.neutron.viewmodel.employee
 import android.net.Uri
 
 data class AddEmployeeUiState(
+    val employeeId: String = "",
+    val idError: String? = null,
     val name: String = "",
     val nameError: String? = null,
     val email: String = "",

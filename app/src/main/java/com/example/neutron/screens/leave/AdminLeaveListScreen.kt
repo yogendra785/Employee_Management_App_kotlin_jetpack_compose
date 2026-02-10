@@ -9,38 +9,56 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.neutron.domain.model.LeaveRequest
+import com.example.neutron.data.local.entity.LeaveEntity
 import com.example.neutron.viewmodel.leave.LeaveViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdminLeaveListScreen(
     viewModel: LeaveViewModel,
     onBack: () -> Unit
 ) {
-    // Observing all leaves from the database
+    // Observing leaves from the database
     val allLeaves by viewModel.allLeaves.collectAsState(initial = emptyList())
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text("Pending Requests", style = MaterialTheme.typography.headlineSmall)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Leave Approvals") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
         }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            val pendingRequests = allLeaves.filter { it.status == "PENDING" }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            // Filter to show only PENDING requests for approval
-            items(allLeaves.filter { it.status == "PENDING" }) { request ->
-                AdminLeaveItem(
-                    request = request,
-                    onApprove = { viewModel.updateStatus(request, "APPROVED") },
-                    onReject = { viewModel.updateStatus(request, "REJECTED") }
-                )
+            if (pendingRequests.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No pending leave requests", style = MaterialTheme.typography.bodyLarge)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(pendingRequests) { leave ->
+                        AdminLeaveItem(
+                            leave = leave,
+                            onApprove = { viewModel.updateLeaveStatus(leave, "APPROVED") },
+                            onReject = { viewModel.updateLeaveStatus(leave, "REJECTED") }
+                        )
+                    }
+                }
             }
         }
     }
@@ -48,34 +66,48 @@ fun AdminLeaveListScreen(
 
 @Composable
 fun AdminLeaveItem(
-    request: LeaveRequest,
+    leave: LeaveEntity,
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(request.employeeName, style = MaterialTheme.typography.titleMedium)
-                Badge(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-                    Text(request.status)
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = leave.employeeName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                SuggestionChip(
+                    onClick = { },
+                    label = { Text(leave.status) }
+                )
             }
-            Text("Reason: ${request.reason}", style = MaterialTheme.typography.bodyMedium)
-
-            // Helper function for date formatting
-            val dateText = "${formatDate(request.startDate)} - ${formatDate(request.endDate)}"
-            Text("Dates: $dateText", style = MaterialTheme.typography.labelSmall)
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            Text(text = "Reason:", style = MaterialTheme.typography.labelLarge)
+            Text(leave.reason, style = MaterialTheme.typography.bodyLarge)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 🔹 This is where formatDate is called
+            val dateText = "${formatDate(leave.startDate)} - ${formatDate(leave.endDate)}"
+            Text(text = "Duration: $dateText", style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(
-                    onClick = onReject,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
+                OutlinedButton(onClick = onReject, modifier = Modifier.padding(end = 8.dp)) {
                     Text("Reject")
                 }
                 Button(onClick = onApprove) {
@@ -86,8 +118,12 @@ fun AdminLeaveItem(
     }
 }
 
-// Simple date formatter helper
+// 🔹 THE FIX: Place this function here, outside of the @Composable functions
 fun formatDate(millis: Long): String {
-    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    return sdf.format(Date(millis))
+    return if (millis > 0) {
+        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+        sdf.format(Date(millis))
+    } else {
+        "N/A"
+    }
 }

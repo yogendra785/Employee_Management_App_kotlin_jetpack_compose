@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -12,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -30,7 +32,7 @@ fun SignupScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var employeeId by remember { mutableStateOf("") }
+    var employeeId by remember { mutableStateOf("") } // Used as an Admin Reference ID
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -50,17 +52,18 @@ fun SignupScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Create an Account",
+                    text = "Admin Registration",
                     style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Join us to get started",
+                    text = "Setup your management account",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(48.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -74,13 +77,10 @@ fun SignupScreen(
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
-                            label = { Text("Full Name") },
+                            label = { Text("Admin Full Name") },
                             modifier = Modifier.fillMaxWidth(),
                             leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Full Name"
-                                )
+                                Icon(imageVector = Icons.Default.Person, contentDescription = null)
                             },
                             singleLine = true
                         )
@@ -88,14 +88,11 @@ fun SignupScreen(
                         OutlinedTextField(
                             value = email,
                             onValueChange = { email = it },
-                            label = { Text("Email Address") },
+                            label = { Text("Work Email Address") },
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Email,
-                                    contentDescription = "Email Address"
-                                )
+                                Icon(imageVector = Icons.Default.Email, contentDescription = null)
                             },
                             singleLine = true
                         )
@@ -103,14 +100,11 @@ fun SignupScreen(
                         OutlinedTextField(
                             value = employeeId,
                             onValueChange = { employeeId = it },
-                            label = { Text("Employee ID") },
+                            label = { Text("Reference ID (Required)") },
                             modifier = Modifier.fillMaxWidth(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Person,
-                                    contentDescription = "Employee ID"
-                                )
+                                Icon(imageVector = Icons.Default.Badge, contentDescription = null)
                             },
                             singleLine = true
                         )
@@ -118,16 +112,13 @@ fun SignupScreen(
                         OutlinedTextField(
                             value = password,
                             onValueChange = { password = it },
-                            label = { Text("Password") },
+                            label = { Text("Password (Min. 6 characters)") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = "Password"
-                                )
+                                Icon(imageVector = Icons.Default.Lock, contentDescription = null)
                             }
                         )
                     }
@@ -143,10 +134,13 @@ fun SignupScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        enabled = name.isNotBlank() && email.isNotBlank() && password.isNotBlank() && employeeId.isNotBlank(),
+                        enabled = name.length >= 3 &&
+                                email.contains("@") &&
+                                password.length >= 6 &&
+                                employeeId.isNotBlank(),
                         shape = MaterialTheme.shapes.medium
                     ) {
-                        Text("Create Account", style = MaterialTheme.typography.titleMedium)
+                        Text("Create Admin Account", style = MaterialTheme.typography.titleMedium)
                     }
                 }
 
@@ -154,7 +148,7 @@ fun SignupScreen(
                     onClick = onLoginClick,
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
-                    Text("Already have an account? Log In")
+                    Text("Back to Admin Login")
                 }
 
                 if (authState is AuthState.Error) {

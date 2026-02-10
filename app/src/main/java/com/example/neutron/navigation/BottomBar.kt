@@ -10,21 +10,19 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 @Composable
 fun BottomBar(
     navController: NavController,
-    userRole: String // 🔹 Role is now a direct parameter
+    userRole: String
 ) {
-    // 🔹 Re-calculate the list whenever userRole changes
+    // 🔹 Role-Based Visibility: Items are filtered once and remembered for performance
     val items = remember(userRole) {
         val list = mutableListOf<BottomNavItem>()
 
-        // Home is always visible
         list.add(BottomNavItem.Home)
 
-        // 🔹 Show Employees ONLY if userRole is ADMIN
+        // Only Admins get the staff management tab
         if (userRole == "ADMIN") {
             list.add(BottomNavItem.Employees)
         }
 
-        // Shared features
         list.add(BottomNavItem.Attendance)
         list.add(BottomNavItem.Profile)
 
@@ -36,28 +34,31 @@ fun BottomBar(
         val currentRoute = navBackStackEntry?.destination?.route
 
         items.forEach { item ->
-            // 🔹 FIX 1: Better selection logic
-            val isSelected = currentRoute == item.route
+            // 🔹 Improved Selection Logic:
+            // Checks if the current route is the item route OR if it's a sub-route (like Employee Detail)
+            val isSelected = currentRoute == item.route ||
+                    (item.route == NavRoutes.EMPLOYEE && currentRoute?.startsWith("employee_detail") == true)
 
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
-
-                    if (currentRoute != item.route) {
-                        navController.navigate(item.route) {
-                            // Pop up to the start destination (DASHBOARD)
-                            // to avoid building up a large stack of screens
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            // Restore state when reselecting a previously selected item
-                            restoreState = true
+                    // Standard Android Bottom Navigation behavior
+                    navController.navigate(item.route) {
+                        // 1. Pop up to the start destination (Dashboard) to avoid building a huge stack
+                        popUpTo(NavRoutes.DASHBOARD) {
+                            saveState = true
                         }
+                        // 2. Avoid multiple copies of the same screen when re-clicking the tab
+                        launchSingleTop = true
+                        // 3. Restore state (e.g., scroll position) when re-selecting a previous tab
+                        restoreState = true
                     }
                 },
                 icon = {
-                    Icon(imageVector = item.icon, contentDescription = item.title)
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = item.title
+                    )
                 },
                 label = {
                     Text(text = item.title)

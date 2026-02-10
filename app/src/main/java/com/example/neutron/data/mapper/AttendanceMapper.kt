@@ -17,7 +17,7 @@ fun AttendanceEntity.toAttendance(): Attendance{
 
 fun Attendance.toAttendanceEntity(): AttendanceEntity{
     return AttendanceEntity(
-  id = id,
+        id = id,
         employeeId = employeeId,
         date = date,
         status = status.name

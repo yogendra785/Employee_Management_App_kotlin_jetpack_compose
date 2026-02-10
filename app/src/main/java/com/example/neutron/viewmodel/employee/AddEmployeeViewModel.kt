@@ -1,6 +1,7 @@
 package com.example.neutron.viewmodel.employee
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.neutron.data.repository.EmployeeRepository
@@ -22,10 +23,18 @@ class AddEmployeeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(AddEmployeeUiState())
     val uiState: StateFlow<AddEmployeeUiState> = _uiState.asStateFlow()
 
+    fun onEmployeeIdChange(value: String) {
+        _uiState.update { it.copy(
+            employeeId = value,
+
+        ) }
+        updateSaveEnabledState()
+    }
+
     fun onNameChange(value: String) {
         _uiState.update { it.copy(
             name = value,
-            nameError = if (value.trim().length < 3) "Name too short" else null
+            nameError = if (value.trim().length < 3) "Name must be at least 3 characters" else null
         ) }
         updateSaveEnabledState()
     }
@@ -41,16 +50,14 @@ class AddEmployeeViewModel @Inject constructor(
     fun onPasswordChange(value: String) {
         _uiState.update { it.copy(
             password = value,
-            passwordError = if (value.length < 6) "Password too short" else null
+            passwordError = if (value.length < 6) "Password must be at least 6 characters" else null
         ) }
         updateSaveEnabledState()
     }
 
     fun onSalaryChange(newSalary: String) {
-        // 🔹 Allow only digits for salary input
-        if (newSalary.all { it.isDigit() }) {
+        if (newSalary.isEmpty() || newSalary.all { it.isDigit() || it == '.' }) {
             _uiState.update { it.copy(salary = newSalary) }
-            updateSaveEnabledState()
         }
     }
 
@@ -61,7 +68,6 @@ class AddEmployeeViewModel @Inject constructor(
 
     fun onDepartmentChange(value: String) {
         _uiState.update { it.copy(department = value) }
-        updateSaveEnabledState()
     }
 
     fun onActiveChange(value: Boolean) {
@@ -73,36 +79,39 @@ class AddEmployeeViewModel @Inject constructor(
     }
 
     fun onSaveEmployee() {
+        val currentState = uiState.value
+        if (!validate(currentState)) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-
-            // 🔹 Construct the domain model from UI state
-            val employee = Employee(
-                name = uiState.value.name,
-                email = uiState.value.email,
-                salary = uiState.value.salary.toDoubleOrNull() ?: 0.0,
-                department = uiState.value.department,
-                role = uiState.value.role,
-                isActive = uiState.value.isActive,
-                firebaseUid = FirebaseAuth.getInstance().currentUser?.uid ?: "",
-                password = uiState.value.password,
-                imagePath = null // Repository will populate this after saving the file
-            )
-
             try {
-                // 1. Save to Local Room DB (Handles image file creation)
-                repository.insertEmployeeWithImage(employee, uiState.value.selectedImageUri)
+                // 🔹 Make sure your domain model 'Employee' has 'employeeId' as a parameter!
+                val employee = Employee(
+                    employeeId = currentState.employeeId.trim(),
+                    name = currentState.name.trim(),
+                    email = currentState.email.trim(),
+                    salary = currentState.salary.toDoubleOrNull() ?: 0.0,
+                    department = currentState.department.trim(),
+                    role = currentState.role.trim(),
+                    isActive = currentState.isActive,
+                    firebaseUid = "",
+                    password = currentState.password
+                )
 
-                // 2. Trigger Cloud Sync Immediately for Firebase
-                val currentUid = FirebaseAuth.getInstance().currentUser?.uid
-                currentUid?.let { uid ->
-                    repository.syncEmployeesToCloud(uid)
+                repository.insertEmployeeWithImage(employee, currentState.selectedImageUri)
+
+                val user = FirebaseAuth.getInstance().currentUser
+
+                if (user != null) {
+                    repository.syncEmployeesToCloud(user.uid)
+                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+                } else {
+                    Log.e("ADD_VM", "User not authenticated with Firebase")
+                    _uiState.update { it.copy(isLoading = false) }
+                    // Handle error: show a message that Admin session expired
                 }
-
-                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
-                // Handle potential errors here (e.g., showing a snackbar)
             }
         }
     }
@@ -113,16 +122,21 @@ class AddEmployeeViewModel @Inject constructor(
 
     private fun updateSaveEnabledState() {
         _uiState.update { state ->
-            // 🔹 Ensure all mandatory fields are filled and error-free
-            state.copy(isSaveEnabled = state.name.isNotBlank() &&
+            state.copy(isSaveEnabled = state.employeeId.isNotBlank() &&
+                    state.name.isNotBlank() &&
                     state.email.isNotBlank() &&
-                    state.role.isNotBlank() &&
                     state.password.isNotBlank() &&
-                    state.salary.isNotBlank() && // Added salary validation
                     state.nameError == null &&
                     state.emailError == null &&
                     state.passwordError == null)
         }
+    }
+
+    private fun validate(state: AddEmployeeUiState): Boolean {
+        return state.employeeId.isNotBlank() &&
+                state.name.trim().length >= 3 &&
+                isValidEmail(state.email.trim()) &&
+                state.password.length >= 6
     }
 
     private fun isValidEmail(email: String): Boolean {

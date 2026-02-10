@@ -15,22 +15,34 @@ fun NeutronNavHost(
 ) {
     val authState by authViewModel.authState.collectAsState()
 
+    // 🔹 Reactive Navigation: Responds immediately to login/logout events
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Authenticated -> {
-                navController.navigate("main_app") {
+                navController.navigate(NavRoutes.MAIN_APP) {
+                    // 1. Remove Splash and Login from history so user can't go back to them
                     popUpTo(NavRoutes.SPLASH) { inclusive = true }
                     popUpTo(NavRoutes.LOGIN) { inclusive = true }
+                    // 2. Ensure we don't create multiple copies of the main app
+                    launchSingleTop = true
                 }
             }
             is AuthState.Unauthenticated -> {
                 navController.navigate(NavRoutes.LOGIN) {
-                    popUpTo(0)
+                    // 3. Clear the entire backstack on logout for security
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
-            else -> {}
+            is AuthState.Error -> {
+                // Real-world: You might stay on the current screen to show the error message
+            }
+            AuthState.Loading -> {
+                // Stay put while loading
+            }
         }
     }
 
+    // This calls your RootNavigationGraph which contains the actual routes
     RootNavigationGraph(navController = navController, authViewModel = authViewModel)
 }

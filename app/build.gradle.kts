@@ -4,16 +4,16 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services) // Required for google-services.json
+    alias(libs.plugins.google.services)
 }
 
 android {
     namespace = "com.example.neutron"
-    compileSdk = 35
+    compileSdk = 35 // 🔹 Keep at 35 for stable build
 
     defaultConfig {
         applicationId = "com.example.neutron"
-        minSdk = 24
+        minSdk = 26 // 🔹 Recommended for modern features
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -22,7 +22,9 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // 🔹 Optimization: This helps secure your app code for production
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -53,12 +55,14 @@ dependencies {
 
     // HILT Dependency Injection
     implementation(libs.hilt.android)
-    implementation(libs.ads.mobile.sdk)
+    implementation(libs.firebase.crashlytics.buildtools)
     implementation(libs.androidx.compose.material3)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
-   //image dependency
+
+    // Image loading with Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
@@ -67,21 +71,23 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-extended")
 
-    // FIREBASE (Using BoM for version consistency)
+    // FIREBASE (Using BoM for consistency)
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
-    implementation("com.google.firebase:firebase-auth-ktx") // No version needed with BoM
-    implementation("com.google.firebase:firebase-firestore-ktx") // Added for Cloud storage
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
-    // 🔹 FIXED: Added 'org.jetbrains.kotlinx:' prefix to fix the resolution error
+    // 🔹 Required for .await() in Repository
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
-    // ROOM Database (Still used for Attendance/Leaves)
+    // ROOM Database (Local storage for offline-first design)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
+
+    // ❌ REMOVED: libs.androidx.camera.camera2.pipe (Fixed API 36 error)
 
     // TESTING & DEBUG
     testImplementation(libs.junit)

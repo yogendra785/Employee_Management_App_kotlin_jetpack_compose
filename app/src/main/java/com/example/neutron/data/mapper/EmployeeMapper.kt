@@ -3,16 +3,17 @@ package com.example.neutron.data.mapper
 import com.example.neutron.data.local.entity.EmployeeEntity
 import com.example.neutron.domain.model.Employee
 
-// Entity → Domain model
+// 🔹 Entity (Database) → Domain model (UI/Logic)
 fun EmployeeEntity.toEmployee(): Employee {
     return Employee(
         id = id,
+        employeeId = employeeId,
         firebaseUid = firebaseUid,
         name = name,
         email = email,
         role = role,
         department = department,
-        salary = salary, // 🔹 Pass salary here
+        salary = salary,
         isActive = isActive,
         createdAt = createdAt,
         password = password,
@@ -20,15 +21,17 @@ fun EmployeeEntity.toEmployee(): Employee {
     )
 }
 
+// 🔹 Domain model (UI/Logic) → Entity (Database)
 fun Employee.toEmployeeEntity(): EmployeeEntity {
     return EmployeeEntity(
         id = id,
+        employeeId = employeeId,
         firebaseUid = firebaseUid,
         name = name,
         email = email,
         role = role,
         department = department,
-        salary = salary, // 🔹 Pass salary here
+        salary = salary,
         isActive = isActive,
         createdAt = createdAt,
         password = password,

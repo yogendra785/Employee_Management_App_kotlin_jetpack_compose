@@ -13,13 +13,14 @@ import com.example.neutron.viewmodel.auth.AuthViewModel
 fun MainScaffold(
     rootNavController: NavHostController,
     authViewModel: AuthViewModel,
-    userRole: String // 🔹 Role is now passed directly from NeutronNavHost
+    userRole: String
 ) {
+    // This controller manages the movement between screens inside the scaffold (e.g., Dashboard to Profile)
     val appNavController = rememberNavController()
 
     Scaffold(
         bottomBar = {
-            // 🔹 The role is passed to the BottomBar
+            // Role-based BottomBar: Shows different tabs for ADMIN vs EMPLOYEE
             BottomBar(
                 navController = appNavController,
                 userRole = userRole
@@ -27,13 +28,19 @@ fun MainScaffold(
         }
     ) { paddingValues ->
 
+        // Internal Navigation Host
         NavHost(
             navController = appNavController,
             startDestination = NavRoutes.DASHBOARD,
-            route = "bottom_bar_graph",
             modifier = Modifier.padding(paddingValues)
         ) {
-            appNavGraph(appNavController, rootNavController, authViewModel, userRole)
+            // Injects the verified appNavGraph we cleaned in the previous step
+            appNavGraph(
+                appNavController = appNavController,
+                rootNavController = rootNavController,
+                authViewModel = authViewModel,
+                userRole = userRole
+            )
         }
     }
 }
