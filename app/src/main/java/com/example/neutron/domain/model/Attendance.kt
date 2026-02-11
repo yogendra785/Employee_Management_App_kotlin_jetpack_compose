@@ -6,8 +6,8 @@ enum class AttendanceStatus {
 }
 
 data class Attendance(
-    val id: Long = 0, // Default 0 for new records
-    val employeeId: Long,
+    val id: Long = 0,
+    val employeeId: String, // 🔹 FIXED: String (Source of Truth)
     val date: Long,
     val status: AttendanceStatus
 )

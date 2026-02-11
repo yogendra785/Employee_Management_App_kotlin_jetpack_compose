@@ -2,13 +2,15 @@ package com.example.neutron.data.auth
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AuthRepository @Inject constructor(
-    private val auth: FirebaseAuth // 🔹 Injected via Hilt for cleaner architecture
+    private val auth: FirebaseAuth, // 🔹 Injected via Hilt for cleaner architecture
+    private val firestore: FirebaseFirestore
 ) {
 
     /**

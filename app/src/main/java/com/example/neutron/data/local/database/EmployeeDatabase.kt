@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase // 🔹 Added for Callback
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.neutron.data.local.dao.AttendanceDao
 import com.example.neutron.data.local.dao.EmployeeDao
 import com.example.neutron.data.local.dao.LeaveDao
@@ -23,7 +23,7 @@ import java.util.concurrent.Executors
         LeaveEntity::class,
         SalaryEntity::class
     ],
-    version = 13, // 🔹 Incremented to match your current schema requirements
+    version = 13,
     exportSchema = false
 )
 abstract class EmployeeDatabase : RoomDatabase() {
@@ -45,7 +45,6 @@ abstract class EmployeeDatabase : RoomDatabase() {
                     "employee_db"
                 )
                     .fallbackToDestructiveMigration()
-                    // 🔹 Using a Room Callback is cleaner for pre-populating data
                     .addCallback(object : Callback() {
                         override fun onOpen(db: SupportSQLiteDatabase) {
                             super.onOpen(db)
@@ -61,20 +60,12 @@ abstract class EmployeeDatabase : RoomDatabase() {
         private fun insertAdmin(db: SupportSQLiteDatabase) {
             Executors.newSingleThreadExecutor().execute {
                 try {
+                    // 🔹 Updated to include ALL fields to prevent crashes
                     db.execSQL(
                         """
                         INSERT OR IGNORE INTO employees (
-                            id, 
-                            employeeId, 
-                            firebaseUid, 
-                            name, 
-                            email, 
-                            role, 
-                            department, 
-                            salary, 
-                            isActive, 
-                            createdAt, 
-                            password
+                            id, employeeId, firebaseUid, name, email, role, department, salary, isActive, createdAt, password,
+                            imagePath, parentName, address, aadharNumber, panNumber, contactNumber, emergencyContact
                         ) 
                         VALUES (
                             1, 
@@ -87,11 +78,12 @@ abstract class EmployeeDatabase : RoomDatabase() {
                             0.0, 
                             1, 
                             ${System.currentTimeMillis()}, 
-                            '123456'
+                            '123456',
+                            NULL, '', '', '', '', '', ''
                         )
                         """.trimIndent()
                     )
-                    Log.d("NEUTRON_DB", "Admin user verified/inserted with employeeId successfully")
+                    Log.d("NEUTRON_DB", "Admin user verified/inserted successfully")
                 } catch (e: Exception) {
                     Log.e("NEUTRON_DB", "Manual insertion failed: ${e.message}")
                 }

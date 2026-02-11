@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 
 @Composable
@@ -12,20 +13,14 @@ fun BottomBar(
     navController: NavController,
     userRole: String
 ) {
-    // 🔹 Role-Based Visibility: Items are filtered once and remembered for performance
     val items = remember(userRole) {
         val list = mutableListOf<BottomNavItem>()
-
         list.add(BottomNavItem.Home)
-
-        // Only Admins get the staff management tab
         if (userRole == "ADMIN") {
             list.add(BottomNavItem.Employees)
         }
-
         list.add(BottomNavItem.Attendance)
         list.add(BottomNavItem.Profile)
-
         list
     }
 
@@ -34,34 +29,44 @@ fun BottomBar(
         val currentRoute = navBackStackEntry?.destination?.route
 
         items.forEach { item ->
-            // 🔹 Improved Selection Logic:
-            // Checks if the current route is the item route OR if it's a sub-route (like Employee Detail)
-            val isSelected = currentRoute == item.route ||
-                    (item.route == NavRoutes.EMPLOYEE && currentRoute?.startsWith("employee_detail") == true)
+            // Highlight logic
+            val isSelected = when (item) {
+                BottomNavItem.Employees -> {
+                    currentRoute == NavRoutes.EMPLOYEE ||
+                            currentRoute == NavRoutes.ADD_EMPLOYEE ||
+                            currentRoute == NavRoutes.ADMIN_LEAVE_LIST ||
+                            currentRoute?.startsWith("employee_detail") == true
+                }
+                BottomNavItem.Attendance -> {
+                    currentRoute == NavRoutes.ATTENDANCE ||
+                            currentRoute == NavRoutes.LEAVE_REQUEST ||
+                            currentRoute == NavRoutes.MY_LEAVE_HISTORY
+                }
+                else -> currentRoute == item.route
+            }
 
             NavigationBarItem(
                 selected = isSelected,
+                icon = { Icon(imageVector = item.icon, contentDescription = item.title) },
+                label = { Text(text = item.title) },
+
+
                 onClick = {
-                    // Standard Android Bottom Navigation behavior
                     navController.navigate(item.route) {
-                        // 1. Pop up to the start destination (Dashboard) to avoid building a huge stack
-                        popUpTo(NavRoutes.DASHBOARD) {
-                            saveState = true
+                        // 1. Always pop up to the start destination (Dashboard)
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            // If it's the Home button, DON'T save the state of sub-screens (like Leave Request).
+                            // We want to destroy them so we go back to a clean Dashboard.
+                            saveState = (item != BottomNavItem.Home)
                         }
-                        // 2. Avoid multiple copies of the same screen when re-clicking the tab
+
+                        // 2. Avoid multiple copies
                         launchSingleTop = true
-                        // 3. Restore state (e.g., scroll position) when re-selecting a previous tab
-                        restoreState = true
+
+                        // 3. Only restore state for non-Home tabs (like Profile or Employees).
+                        // For Home, we want a "Hard Reset" to the Dashboard.
+                        restoreState = (item != BottomNavItem.Home)
                     }
-                },
-                icon = {
-                    Icon(
-                        imageVector = item.icon,
-                        contentDescription = item.title
-                    )
-                },
-                label = {
-                    Text(text = item.title)
                 }
             )
         }

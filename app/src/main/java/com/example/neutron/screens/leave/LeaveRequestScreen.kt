@@ -89,7 +89,7 @@ fun LeaveRequestScreen(
                 // 🔹 FIXED: Using real ID and Name from the session
                 if (currentUser != null) {
                     viewModel.submitLeave(
-                        employeeId = currentUser.id,
+                        employeeId = currentUser.employeeId,
                         employeeName = currentUser.name,
                         startDate = dateRangePickerState.selectedStartDateMillis ?: 0L,
                         endDate = dateRangePickerState.selectedEndDateMillis ?: 0L,

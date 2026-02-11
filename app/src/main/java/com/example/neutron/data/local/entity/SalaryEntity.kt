@@ -6,25 +6,24 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "attendance",
+    tableName = "salaries",
     foreignKeys = [
         ForeignKey(
             entity = EmployeeEntity::class,
-            parentColumns = ["employeeId"],
+            parentColumns = ["employeeId"], // Points to the String ID
             childColumns = ["employeeId"],
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [
-        Index("employeeId"),
-        // Prevents duplicate entries for the same employee on the same day
-        Index(value = ["employeeId", "date"], unique = true)
-    ]
+    indices = [Index("employeeId")]
 )
-data class AttendanceEntity(
+data class SalaryEntity(
     @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    val salaryId: Long = 0, // 🔹 NOTE: Primary Key is 'salaryId'
     val employeeId: String,
-    val date: Long, // Stored as Timestamp
-    val status: String // e.g., "Present", "Absent", "Late"
+    val month: String,
+    val baseSalary: Double,
+    val advancePaid: Double,
+    val absentDays: Int,
+    val perDayDeduction: Double
 )

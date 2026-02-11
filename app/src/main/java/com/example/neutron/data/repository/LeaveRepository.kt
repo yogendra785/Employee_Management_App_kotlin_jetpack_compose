@@ -1,5 +1,6 @@
 package com.example.neutron.data.repository
 
+import android.util.Log
 import com.example.neutron.data.local.dao.LeaveDao
 import com.example.neutron.data.local.entity.LeaveEntity
 import com.google.firebase.firestore.FirebaseFirestore
@@ -16,21 +17,13 @@ class LeaveRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
 
-    // 1. Get all leaves (For Admin)
     fun getAllLeaves(): Flow<List<LeaveEntity>> = leaveDao.getAllLeaves()
 
-    // 2. Get leaves for a specific employee (For Employee Dashboard)
-    fun getEmployeeLeaves(employeeId: Long): Flow<List<LeaveEntity>> =
+    fun getEmployeeLeaves(employeeId: String): Flow<List<LeaveEntity>> =
         leaveDao.getLeavesByEmployee(employeeId)
 
-    /**
-     * Submits a leave request to both local Room and Firestore.
-     */
     suspend fun submitLeaveRequest(leave: LeaveEntity) = withContext(Dispatchers.IO) {
-        // 🔹 Fix: Matches 'insertLeave' in your DAO
         leaveDao.insertLeave(leave)
-
-        // Sync to Firestore
         try {
             val leaveMap = hashMapOf(
                 "employeeId" to leave.employeeId,
@@ -43,18 +36,12 @@ class LeaveRepository @Inject constructor(
             )
             firestore.collection("leave_requests").add(leaveMap).await()
         } catch (e: Exception) {
-            // Log error or handle offline state
+            Log.e("LeaveRepo", "Submit Failed: ${e.message}")
         }
     }
 
-    /**
-     * Updates leave status in both local Room and Firestore.
-     */
     suspend fun updateLeaveStatus(leave: LeaveEntity) = withContext(Dispatchers.IO) {
-        // 🔹 Fix: Matches 'updateLeaveStatus' in your DAO
         leaveDao.updateLeaveStatus(leave.employeeId, leave.requestDate, leave.status)
-
-        // Update in Firestore
         try {
             val query = firestore.collection("leave_requests")
                 .whereEqualTo("employeeId", leave.employeeId)
@@ -66,7 +53,34 @@ class LeaveRepository @Inject constructor(
                 document.reference.update("status", leave.status).await()
             }
         } catch (e: Exception) {
-            // Handle Firestore update error
+            Log.e("LeaveRepo", "Update Failed: ${e.message}")
+        }
+    }
+
+    // 🔹 NEW: Sync function to pull latest leaves from Cloud
+    suspend fun syncLeavesFromFirestore(employeeId: String) = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = firestore.collection("leave_requests")
+                .whereEqualTo("employeeId", employeeId)
+                .get()
+                .await()
+
+            val remoteLeaves = snapshot.documents.mapNotNull { doc ->
+                LeaveEntity(
+                    employeeId = doc.getString("employeeId") ?: return@mapNotNull null,
+                    employeeName = doc.getString("employeeName") ?: "",
+                    startDate = doc.getLong("startDate") ?: 0L,
+                    endDate = doc.getLong("endDate") ?: 0L,
+                    reason = doc.getString("reason") ?: "",
+                    status = doc.getString("status") ?: "PENDING",
+                    requestDate = doc.getLong("requestDate") ?: 0L
+                )
+            }
+
+            // Save to local database
+            remoteLeaves.forEach { leaveDao.insertLeave(it) }
+        } catch (e: Exception) {
+            Log.e("LeaveRepo", "Sync Leaves Failed: ${e.message}")
         }
     }
 }

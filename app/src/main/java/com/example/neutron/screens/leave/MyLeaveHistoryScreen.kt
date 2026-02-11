@@ -1,28 +1,13 @@
 package com.example.neutron.screens.leave
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,16 +18,21 @@ import com.example.neutron.viewmodel.leave.LeaveViewModel
 @Composable
 fun MyLeaveHistoryScreen(
     viewModel: LeaveViewModel,
-    currentUser: Employee?, // 🔹 Received from NavGraph
+    currentUser: Employee?,
     onBack: () -> Unit
 ) {
-    // 🔹 FIXED: Using real currentUser.id instead of placeholder 123
-    val myLeaves by viewModel.getMyLeaveHistory(currentUser?.id ?: 0L).collectAsState(initial = emptyList())
+    val employeeId = currentUser?.employeeId ?: ""
+    val myLeaves by viewModel.getMyLeaveHistory(employeeId).collectAsState(initial = emptyList())
+
+    // 🔹 NEW: Auto-Sync when screen opens
+    LaunchedEffect(employeeId) {
+        if (employeeId.isNotBlank()) {
+            viewModel.refreshLeaves(employeeId)
+        }
+    }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+        modifier = Modifier.fillMaxSize().padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) {
@@ -64,58 +54,43 @@ fun MyLeaveHistoryScreen(
         } else {
             LazyColumn {
                 items(myLeaves) { request ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                // 🔹 Uses the formatDate helper we defined for the Admin screen
-                                Text(
-                                    text = formatDate(request.startDate),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-
-                                // Status badge with dynamic coloring
-                                val badgeColor = when (request.status.uppercase()) {
-                                    "APPROVED" -> Color(0xFF4CAF50) // Green
-                                    "REJECTED" -> MaterialTheme.colorScheme.error // Red
-                                    else -> MaterialTheme.colorScheme.primary // Blue/Pending
-                                }
-
-                                Surface(
-                                    color = badgeColor,
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        text = request.status,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Reason: ${request.reason}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "Requested on: ${formatDate(request.requestDate)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    LeaveStatusCard(request)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun LeaveStatusCard(request: com.example.neutron.data.local.entity.LeaveEntity) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = formatDate(request.startDate), style = MaterialTheme.typography.titleMedium)
+
+                val badgeColor = when (request.status.uppercase()) {
+                    "APPROVED" -> Color(0xFF4CAF50)
+                    "REJECTED" -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.primary
+                }
+
+                Surface(color = badgeColor, shape = RoundedCornerShape(4.dp)) {
+                    Text(
+                        text = request.status,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "Reason: ${request.reason}", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

@@ -6,7 +6,7 @@ data class MonthlyStats (
     val absentCount: Int
 )
 
-data class AttendaceSummary(
+data class AttendanceSummary(
     val totalPresent: Int,
     val totalAbsent: Int,
     val history: List<MonthlyStats>

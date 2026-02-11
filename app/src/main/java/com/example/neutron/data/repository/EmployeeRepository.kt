@@ -4,9 +4,10 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.example.neutron.data.local.dao.AttendanceDao
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.example.neutron.data.local.dao.EmployeeDao
 import com.example.neutron.data.local.dao.SalaryDao
-import com.example.neutron.data.local.dao.LeaveDao // 🔹 Added Import
+import com.example.neutron.data.local.dao.LeaveDao
 import com.example.neutron.data.local.entity.EmployeeEntity
 import com.example.neutron.data.local.entity.LeaveEntity
 import com.example.neutron.data.local.entity.SalaryEntity
@@ -29,22 +30,24 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import javax.inject.Inject
 
-class EmployeeRepository(
+class EmployeeRepository @Inject constructor(
     private val dao: EmployeeDao,
     private val salaryDao: SalaryDao,
     private val attendanceDao: AttendanceDao,
-    private val leaveDao: LeaveDao, // 🔹 Added to constructor
-    private val context: Context
+    @ApplicationContext private val context: Context,
+    private val leaveDao: LeaveDao,
+
+    private val firestore: FirebaseFirestore // 🔹 Injected is better, but local instance is fine for now
 ) {
-    private val firestore = FirebaseFirestore.getInstance()
 
     // --- Employee Core Logic ---
 
     fun getAllEmployees(): Flow<List<Employee>> =
         dao.getAllEmployeesFlow().map { entities -> entities.map { it.toEmployee() } }
 
-    fun getEmployeeById(id: Long): Flow<Employee?> =
+    fun getEmployeeById(id: String): Flow<Employee?> =
         dao.getEmployeeById(id).map { it?.toEmployee() }
 
     suspend fun insertEmployeeWithImage(employee: Employee, imageUri: Uri?) {
@@ -81,7 +84,7 @@ class EmployeeRepository(
         }
     }
 
-    suspend fun updateEmployeeStatus(id: Long, isActive: Boolean) = dao.updateEmployeeStatus(id, isActive)
+    suspend fun updateEmployeeStatus(id: String, isActive: Boolean) = dao.updateEmployeeStatus(id, isActive)
 
     // --- Salary Logic ---
 
@@ -97,7 +100,7 @@ class EmployeeRepository(
         salaryDao.insertSalary(entity)
     }
 
-    suspend fun getAbsentCount(employeeId: Long, month: String): Int = withContext(Dispatchers.IO) {
+    suspend fun getAbsentCount(employeeId: String, month: String): Int = withContext(Dispatchers.IO) {
         val records = attendanceDao.getAttendanceByEmployee(employeeId).firstOrNull() ?: emptyList()
         records.count {
             it.status == AttendanceStatus.ABSENT.name && isDateInMonth(it.date, month)
@@ -146,16 +149,14 @@ class EmployeeRepository(
         }
     }
 
-    // --- 🔹 Leave Management Logic (Fixed) ---
+    // --- 🔹 Leave Management Logic ---
 
     suspend fun applyForLeave(leave: LeaveEntity) = withContext(Dispatchers.IO) {
         try {
-            // 1. Local Room Save using injected leaveDao
             leaveDao.insertLeave(leave)
 
-            // 2. Cloud Firestore Save
             val leaveMap = hashMapOf(
-                "employeeId" to leave.employeeId,
+                "employeeId" to leave.employeeId, // String
                 "employeeName" to leave.employeeName,
                 "startDate" to leave.startDate,
                 "endDate" to leave.endDate,
@@ -175,7 +176,8 @@ class EmployeeRepository(
             .addSnapshotListener { snapshot, _ ->
                 val requests = snapshot?.documents?.map { doc ->
                     LeaveEntity(
-                        employeeId = doc.getLong("employeeId") ?: 0L,
+                        // 🔹 FIXED: Was getLong, now getString to match Entity
+                        employeeId = doc.getString("employeeId") ?: "",
                         employeeName = doc.getString("employeeName") ?: "",
                         startDate = doc.getLong("startDate") ?: 0L,
                         endDate = doc.getLong("endDate") ?: 0L,
@@ -191,7 +193,6 @@ class EmployeeRepository(
 
     suspend fun updateLeaveStatus(leave: LeaveEntity, newStatus: String) = withContext(Dispatchers.IO) {
         try {
-            // 1. Update Firestore
             val query = firestore.collection("leave_requests")
                 .whereEqualTo("employeeId", leave.employeeId)
                 .whereEqualTo("requestDate", leave.requestDate)
@@ -201,8 +202,7 @@ class EmployeeRepository(
             for (doc in query.documents) {
                 doc.reference.update("status", newStatus).await()
             }
-
-            // 2. Update Local Room using injected leaveDao
+            // 🔹 FIXED: Parameters matched DAO (String, Long, String)
             leaveDao.updateLeaveStatus(leave.employeeId, leave.requestDate, newStatus)
         } catch (e: Exception) {
             Log.e("LEAVE_REPO", "Status Update Error: ${e.message}")

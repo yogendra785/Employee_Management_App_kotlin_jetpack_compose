@@ -2,8 +2,10 @@ package com.example.neutron.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState // 🔹 Added
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll // 🔹 Added
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Badge
@@ -31,14 +33,11 @@ fun ProfileScreen(
     navController: NavHostController,
     onLogout: () -> Unit
 ) {
-    // 🔹 Reactive state: Pulls directly from our cleaned AuthViewModel
     val currentUser by authViewModel.currentUser.collectAsState()
 
-    // Data handling with fallbacks
     val displayName = currentUser?.name ?: "Yogendra Singh"
     val displayRole = currentUser?.role ?: "Admin"
     val displayEmail = currentUser?.email ?: "yshekhawat785@gmail.com"
-    // Using employeeId if available, else standard fallback
     val displayId = currentUser?.firebaseUid?.takeLast(8)?.uppercase() ?: "EMP-2027"
 
     Column(
@@ -52,7 +51,8 @@ fun ProfileScreen(
                     )
                 )
             )
-            .padding(24.dp),
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()), // 🔹 ENABLED SCROLLING HERE
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Header
@@ -89,7 +89,7 @@ fun ProfileScreen(
             Surface(
                 modifier = Modifier.size(28.dp),
                 shape = CircleShape,
-                color = Color(0xFF4CAF50), // Green for Active
+                color = Color(0xFF4CAF50),
                 border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.surface)
             ) {}
         }
@@ -124,13 +124,12 @@ fun ProfileScreen(
             ProfileInfoCard(icon = Icons.Default.Badge, label = "Unique Identifier", value = displayId)
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        // 🔹 REMOVED modifier.weight(1f) to prevent crash
+        Spacer(modifier = Modifier.height(48.dp))
 
         // Redesigned Logout Button
         Button(
-            onClick = {
-                onLogout() // We call the passed navigation handler
-            },
+            onClick = { onLogout() },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp),
@@ -147,7 +146,9 @@ fun ProfileScreen(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
-        Spacer(modifier = Modifier.height(16.dp))
+
+        // Extra space at bottom for comfortable scrolling
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 

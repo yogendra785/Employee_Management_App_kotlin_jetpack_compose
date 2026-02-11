@@ -1,9 +1,15 @@
 package com.example.neutron.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "employees")
+@Entity(
+    tableName = "employees",
+    // 🔹 FIX: This tells Room that 'employeeId' is unique, allowing SalaryEntity to reference it.
+    indices = [Index(value = ["employeeId"], unique = true)]
+)
+
 data class EmployeeEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
@@ -17,5 +23,11 @@ data class EmployeeEntity(
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
     val password: String,
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    val parentName: String = "",
+    val address: String = "",
+    val aadharNumber: String = "",
+    val panNumber: String = "",
+    val contactNumber: String = "",
+    val emergencyContact: String = ""
 )

@@ -18,8 +18,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.neutron.domain.model.AttendaceSummary
+import com.example.neutron.domain.model.AttendanceSummary
 import com.example.neutron.domain.model.MonthlyStats
 import com.example.neutron.viewmodel.attendance.AttendanceViewModel
 import com.example.neutron.viewmodel.employee.EmployeeViewModel
@@ -27,16 +26,19 @@ import com.example.neutron.viewmodel.employee.EmployeeViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmployeeDetailScreen(
-    employeeId: Long,
+    employeeId: String,
     employeeViewModel: EmployeeViewModel,
     attendanceViewModel: AttendanceViewModel,
     onBack: () -> Unit
 ) {
     val employees by employeeViewModel.employees.collectAsState()
-    val employee = employees.find { it.id == employeeId }
 
+    // 🔹 FIXED: Compare String (it.employeeId) with String (employeeId)
+    val employee = employees.find { it.employeeId == employeeId }
+
+    // Also ensure we trigger the attendance summary load for this specific ID
     val summary by attendanceViewModel.getEmployeeSummary(employeeId)
-        .collectAsState(initial = AttendaceSummary(0, 0, emptyList()))
+        .collectAsState(initial = AttendanceSummary(0, 0, emptyList()))
 
     Scaffold(
         topBar = {

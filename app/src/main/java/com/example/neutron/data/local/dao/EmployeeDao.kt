@@ -21,8 +21,8 @@ interface EmployeeDao {
     @Query("SELECT * FROM employees")
     suspend fun getAllEmployeesList(): List<EmployeeEntity>
 
-    @Query("SELECT * FROM employees WHERE id = :employeeId LIMIT 1")
-    fun getEmployeeById(employeeId: Long): Flow<EmployeeEntity?>
+    @Query("SELECT * FROM employees WHERE employeeId = :id LIMIT 1")
+    fun getEmployeeById(id: String): Flow<EmployeeEntity?>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) // 🔹 Use REPLACE to handle updates smoothly
     suspend fun insertEmployee(employee: EmployeeEntity): Long
@@ -36,6 +36,6 @@ interface EmployeeDao {
     @Query("SELECT EXISTS(SELECT 1 FROM employees WHERE email = :email)")
     suspend fun isEmailExists(email: String): Boolean
 
-    @Query("UPDATE employees SET isActive = :isActive WHERE id = :employeeId")
-    suspend fun updateEmployeeStatus(employeeId: Long, isActive: Boolean)
+    @Query("UPDATE employees SET isActive = :isActive WHERE employeeId = :id")
+    suspend fun updateEmployeeStatus(id: String, isActive: Boolean)
 }

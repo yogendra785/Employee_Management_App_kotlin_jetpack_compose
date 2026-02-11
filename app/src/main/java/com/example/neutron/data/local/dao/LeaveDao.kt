@@ -8,20 +8,21 @@ import kotlinx.coroutines.flow.Flow
 interface LeaveDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertLeave(leave: LeaveEntity) // 🔹 Fixed: Repository calls this
+    suspend fun insertLeave(leave: LeaveEntity)
 
+    // 🔹 FIXED: Changed parameter from Long to String to match Entity
     @Query("SELECT * FROM leave_requests WHERE employeeId = :employeeId")
-    fun getLeavesByEmployee(employeeId: Long): Flow<List<LeaveEntity>>
+    fun getLeavesByEmployee(employeeId: String): Flow<List<LeaveEntity>>
 
     @Query("SELECT * FROM leave_requests")
     fun getAllLeaves(): Flow<List<LeaveEntity>>
 
     /**
-     * 🔹 Fixed: Repository calls this to update status in Room.
-     * We use employeeId and requestDate to find the unique record.
+     * 🔹 FIXED: Changed parameter from Long to String.
+     * Updates the status of a specific leave request.
      */
     @Query("UPDATE leave_requests SET status = :status WHERE employeeId = :employeeId AND requestDate = :requestDate")
-    suspend fun updateLeaveStatus(employeeId: Long, requestDate: Long, status: String)
+    suspend fun updateLeaveStatus(employeeId: String, requestDate: Long, status: String)
 
     @Delete
     suspend fun deleteLeave(leave: LeaveEntity)

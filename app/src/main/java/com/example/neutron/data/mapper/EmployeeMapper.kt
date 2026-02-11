@@ -17,7 +17,13 @@ fun EmployeeEntity.toEmployee(): Employee {
         isActive = isActive,
         createdAt = createdAt,
         password = password,
-        imagePath = imagePath
+        imagePath = imagePath,
+        parentName = parentName,
+        address = address,
+        aadharNumber = aadharNumber,
+        panNumber = panNumber,
+        contactNumber = contactNumber,
+        emergencyContact = emergencyContact
     )
 }
 
@@ -35,6 +41,12 @@ fun Employee.toEmployeeEntity(): EmployeeEntity {
         isActive = isActive,
         createdAt = createdAt,
         password = password,
-        imagePath = imagePath
+        imagePath = imagePath,
+        parentName = parentName,
+        address = address,
+        aadharNumber = aadharNumber,
+        panNumber = panNumber,
+        contactNumber = contactNumber,
+        emergencyContact = emergencyContact
     )
 }

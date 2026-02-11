@@ -15,8 +15,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
-
-
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth,
@@ -64,7 +62,7 @@ class AuthViewModel @Inject constructor(
     }
 
     /**
-     * 🔹 EMPLOYEE LOGIN (Fixed Logic)
+     * 🔹 EMPLOYEE LOGIN (Robust Fix)
      */
     fun employeeLogin(employeeId: String, passwordInput: String) {
         val cleanEmployeeId = employeeId.trim()
@@ -80,16 +78,21 @@ class AuthViewModel @Inject constructor(
                     .await()
 
                 if (querySnapshot.isEmpty) {
-                    _authState.value = AuthState.Error("Invalid Employee ID")
+                    _authState.value = AuthState.Error("Employee ID '$cleanEmployeeId' not found.")
                     return@launch
                 }
 
                 val document = querySnapshot.documents.first()
-                val dbPassword = document.getString("password") ?: ""
+
+                // 🔹 ROBUST PASSWORD CHECK:
+                // We handle cases where password might be stored as Number or String, and trim spaces.
+                val rawDbPassword = document.get("password")?.toString() ?: ""
+                val dbPassword = rawDbPassword.trim()
+
+                Log.d("AUTH_DEBUG", "Input: '$cleanPassword' | DB (Trimmed): '$dbPassword'")
 
                 // 2. Validate Password
                 if (dbPassword == cleanPassword) {
-                    // 🔹 CRITICAL: Ensure we get the correct role from Firestore
                     val roleFromDb = document.getString("role") ?: "EMPLOYEE"
                     val uid = document.getString("firebaseUid") ?: document.id
                     val name = document.getString("name") ?: "Staff"
@@ -98,7 +101,7 @@ class AuthViewModel @Inject constructor(
                     // 3. Sync to local and Update State
                     syncUserToLocal(
                         uid = uid,
-                        role = roleFromDb, // Use the actual role from DB
+                        role = roleFromDb,
                         email = email,
                         name = name,
                         isEmployeeLogin = true,
@@ -106,8 +109,6 @@ class AuthViewModel @Inject constructor(
                         salary = document.getDouble("salary") ?: 0.0,
                         employeeId = cleanEmployeeId
                     )
-
-                    Log.d("AUTH_SUCCESS", "Logged in as $roleFromDb")
                 } else {
                     _authState.value = AuthState.Error("Incorrect Password")
                 }
@@ -117,6 +118,8 @@ class AuthViewModel @Inject constructor(
             }
         }
     }
+
+    // ... (Keep syncUserToLocal, signup, and logout exactly as they were) ...
 
     private suspend fun syncUserToLocal(
         uid: String,
@@ -130,7 +133,7 @@ class AuthViewModel @Inject constructor(
     ) {
         try {
             val employee = Employee(
-                id = 0, // Room will generate if using @PrimaryKey(autoGenerate = true)
+                id = 0,
                 employeeId = if (isEmployeeLogin) employeeId else "ADMIN",
                 firebaseUid = uid,
                 name = name,
@@ -143,10 +146,8 @@ class AuthViewModel @Inject constructor(
             )
 
             employeeRepository.insertEmployeeWithImage(employee, null)
-
-            // 🔹 UPDATE STATE FLOWS
             _currentUser.value = employee
-            _authState.value = AuthState.Authenticated(role) // This triggers Dashboard UI
+            _authState.value = AuthState.Authenticated(role)
         } catch (e: Exception) {
             Log.e("AuthViewModel", "Local Sync Failed", e)
             _authState.value = AuthState.Error("Local database error")

@@ -97,7 +97,7 @@ class EmployeeViewModel @Inject constructor(
     fun toggleEmployeeStatus(employee: Employee) {
         viewModelScope.launch {
             repository.updateEmployeeStatus(
-                id = employee.id,
+                id = employee.employeeId,
                 isActive = !employee.isActive
             )
             loadDashboardStats()
@@ -107,7 +107,7 @@ class EmployeeViewModel @Inject constructor(
     /**
      * Fetches details for a single employee (used in Detail Screen).
      */
-    fun getEmployeeById(id: Long): Flow<Employee?> {
+    fun getEmployeeById(id: String): Flow<Employee?> {
         return repository.getEmployeeById(id)
     }
 

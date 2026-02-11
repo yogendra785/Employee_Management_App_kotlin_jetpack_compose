@@ -16,14 +16,14 @@ interface AttendanceDao {
     fun getAttendanceByDate(date: Long): Flow<List<AttendanceEntity>>
 
     @Query("SELECT * FROM attendance WHERE employeeId = :employeeId ORDER BY date DESC")
-    fun getAttendanceForEmployee(employeeId: Long): Flow<List<AttendanceEntity>>
+    fun getAttendanceForEmployee(employeeId: String): Flow<List<AttendanceEntity>>
 
     @Query("SELECT * FROM attendance ORDER BY date DESC")
     fun getAllAttendance(): Flow<List<AttendanceEntity>>
 
 
     @Query("SELECT * FROM attendance WHERE employeeId = :empId")
-    fun getAttendanceByEmployee(empId: Long): Flow<List<AttendanceEntity>>
+    fun getAttendanceByEmployee(empId: String): Flow<List<AttendanceEntity>>
 
     @Query("SELECT * FROM attendance")
     suspend fun getAllAttendanceList(): List<AttendanceEntity>

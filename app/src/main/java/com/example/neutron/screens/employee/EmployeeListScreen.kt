@@ -87,10 +87,7 @@ fun EmployeeListScreen(
                 ) {
                     // 🔹 Performance Summary Section
                     item {
-                        DashboardHeader(
-                            stats = stats,
-                            onSyncClick = { viewModel.triggerCloudSync() }
-                        )
+
 
                         Text(
                             text = "Manage Staff",
@@ -124,7 +121,7 @@ fun EmployeeListScreen(
                                     }
                                 },
                                 onClick = {
-                                    navigate(NavRoutes.createDetailRoute(employee.id))
+                                    navigate(NavRoutes.createDetailRoute(employee.employeeId))
                                 }
                             )
                         }
