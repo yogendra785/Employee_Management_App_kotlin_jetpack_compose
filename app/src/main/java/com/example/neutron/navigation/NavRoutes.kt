@@ -26,4 +26,7 @@ object NavRoutes {
     // Dynamic Route
     const val EMPLOYEE_DETAIL = "employee_detail/{employeeId}"
     fun createDetailRoute(id: String) = "employee_detail/$id"
+
+    const val KYC_FORM = "kyc_form/{employeeId}"
+    fun createKycRoute(id: String) = "kyc_form/$id"
 }

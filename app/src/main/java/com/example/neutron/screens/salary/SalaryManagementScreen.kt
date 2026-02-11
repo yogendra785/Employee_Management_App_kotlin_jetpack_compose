@@ -1,5 +1,6 @@
 package com.example.neutron.screens.salary
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.neutron.domain.model.Employee
 import com.example.neutron.domain.model.SalaryRecord
+import com.example.neutron.utils.PdfGenerator
 import com.example.neutron.viewmodel.employee.SalaryViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,6 +37,7 @@ fun SalaryManagementScreen(
     val uiState by viewModel.salaryUiState.collectAsState()
     val context = LocalContext.current
 
+    // State for Dialog
     var showDialog by remember { mutableStateOf(false) }
     var selectedEmployee by remember { mutableStateOf<Employee?>(null) }
 
@@ -54,16 +57,43 @@ fun SalaryManagementScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).padding(horizontal = 20.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(horizontal = 20.dp)
+                .fillMaxSize()
+        ) {
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Header Stats
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "Processing Month",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        currentMonth,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
-                "Process Salaries for $currentMonth",
+                "Select Employee",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -72,29 +102,31 @@ fun SalaryManagementScreen(
                 items(employees) { employee ->
                     OutlinedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(12.dp),
                         onClick = {
-                            viewModel.resetState() // 🔹 Clean previous data before opening
+                            viewModel.resetState()
                             selectedEmployee = employee
-                            // Pre-fill base salary from employee record for faster processing
+                            // Auto-fill base salary
                             viewModel.onBaseSalaryChange(employee.salary.toString())
                             showDialog = true
                         }
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp),
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Surface(
                                 modifier = Modifier.size(48.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer
+                                color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(
                                         employee.name.take(1).uppercase(),
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
@@ -103,7 +135,11 @@ fun SalaryManagementScreen(
                                 Text(employee.name, fontWeight = FontWeight.Bold)
                                 Text(employee.department, style = MaterialTheme.typography.bodySmall)
                             }
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.outline)
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.outline
+                            )
                         }
                     }
                 }
@@ -111,46 +147,67 @@ fun SalaryManagementScreen(
         }
     }
 
+    // --- Processing Dialog ---
     if (showDialog && selectedEmployee != null) {
+        val emp = selectedEmployee!!
+
+        // Calculate totals locally for immediate UI feedback if not in VM
+        val absentDays = uiState.absences.toIntOrNull() ?: 0
+        val deductionRate = uiState.deductionRate.toDoubleOrNull() ?: 0.0
+        val totalPenalty = absentDays * deductionRate
+        val baseSalary = uiState.baseSalary.toDoubleOrNull() ?: 0.0
+        val advance = uiState.advance.toDoubleOrNull() ?: 0.0
+        val netPayable = (baseSalary - totalPenalty - advance).coerceAtLeast(0.0)
+
         AlertDialog(
             onDismissRequest = { showDialog = false },
             title = {
                 Column {
-                    Text("Payroll Processing", style = MaterialTheme.typography.titleSmall)
-                    Text(selectedEmployee!!.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Process Salary", style = MaterialTheme.typography.labelLarge)
+                    Text(emp.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 }
             },
             text = {
                 Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // 1. Base Salary
+                    // 1. Base Salary Input
                     OutlinedTextField(
                         value = uiState.baseSalary,
                         onValueChange = viewModel::onBaseSalaryChange,
-                        label = { Text("Standard Monthly Pay") },
-                        prefix = { Text("₹") },
+                        label = { Text("Base Salary") },
+                        prefix = { Text("₹ ") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
                     )
 
-                    // 2. Absences with Automation
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 2. Automated Attendance Fetch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         OutlinedTextField(
                             value = uiState.absences,
                             onValueChange = viewModel::onAbsencesChange,
                             label = { Text("Absent Days") },
                             modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         FilledTonalIconButton(
-                            onClick = { viewModel.fetchAutomatedAbsences(selectedEmployee!!.employeeId, currentMonth) },
-                            modifier = Modifier.size(56.dp),
-                            shape = RoundedCornerShape(12.dp)
+                            onClick = {
+                                // Trigger automated fetch
+                                viewModel.fetchAutomatedAbsences(emp.employeeId, currentMonth)
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.size(56.dp) // Match height of TextField
                         ) {
-                            Icon(Icons.Default.AutoFixHigh, contentDescription = "Sync Attendance")
+                            Icon(Icons.Default.AutoFixHigh, contentDescription = "Auto Sync")
                         }
                     }
 
@@ -158,66 +215,94 @@ fun SalaryManagementScreen(
                     OutlinedTextField(
                         value = uiState.deductionRate,
                         onValueChange = viewModel::onDeductionRateChange,
-                        label = { Text("Per Day Deduction") },
-                        prefix = { Text("₹") },
+                        label = { Text("Deduction Per Day") },
+                        prefix = { Text("₹ ") },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
                     )
 
-                    // 4. Calculations Summary
-                    val totalDeduction = (uiState.absences.toIntOrNull() ?: 0) * (uiState.deductionRate.toDoubleOrNull() ?: 0.0)
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp)
+                    // 4. Advance
+                    OutlinedTextField(
+                        value = uiState.advance,
+                        onValueChange = viewModel::onAdvanceChange,
+                        label = { Text("Advance Paid") },
+                        prefix = { Text("₹ ") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 5. Summary Box
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                Text("Total Penalty:", style = MaterialTheme.typography.bodySmall)
-                                Text("-₹$totalDeduction", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Total Penalty:", style = MaterialTheme.typography.bodyMedium)
+                                Text("-₹${String.format("%.2f", totalPenalty)}", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                             }
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                Text("Net Payable:", fontWeight = FontWeight.Bold)
-                                Text("₹${uiState.netPayable}", fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            HorizontalDivider()
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Net Payable:", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text("₹${String.format("%.2f", netPayable)}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
 
-                    // 5. PDF Action
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 6. PDF Button
                     Button(
                         onClick = {
                             val record = SalaryRecord(
-                                employeeId = selectedEmployee!!.employeeId,
-                                employeeName = selectedEmployee!!.name,
+                                employeeId = emp.employeeId,
+                                employeeName = emp.name,
                                 month = currentMonth,
-                                baseSalary = uiState.baseSalary.toDoubleOrNull() ?: 0.0,
-                                advancePaid = uiState.advance.toDoubleOrNull() ?: 0.0,
-                                absentDays = uiState.absences.toIntOrNull() ?: 0,
-                                perDayDeduction = uiState.deductionRate.toDoubleOrNull() ?: 0.0,
-                                netPayable = uiState.netPayable
+                                baseSalary = baseSalary,
+                                advancePaid = advance,
+                                absentDays = absentDays,
+                                perDayDeduction = deductionRate,
+                                netPayable = netPayable
                             )
-                            viewModel.generatePdf(context, record, selectedEmployee!!.name)
+                            // Call the corrected PdfGenerator
+                            val generator = PdfGenerator(context)
+                            generator.generateSalarySlip(record, emp.name)
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Generate Salary Slip")
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Generate PDF Slip")
                     }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.saveSalary(selectedEmployee!!.employeeId,
-                            month = currentMonth,
-                            employeeName = selectedEmployee!!.name)
+                        viewModel.saveSalary(emp.employeeId, currentMonth, emp.name)
                         showDialog = false
                     }
-                ) { Text("Save & Record") }
+                ) {
+                    Text("Save Record")
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Close") }
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }

@@ -29,7 +29,8 @@ fun EmployeeDetailScreen(
     employeeId: String,
     employeeViewModel: EmployeeViewModel,
     attendanceViewModel: AttendanceViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGenerateKyc: (String) -> Unit
 ) {
     val employees by employeeViewModel.employees.collectAsState()
 
@@ -120,6 +121,32 @@ fun EmployeeDetailScreen(
                     role = it.role,
                     salary = it.salary
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+// 🔹 NEW: KYC ACTION CARD
+                Card(
+                    onClick = {
+                        onGenerateKyc(employeeId)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("KYC & Bio-Data", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Text("Generate Employee Form PDF", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 

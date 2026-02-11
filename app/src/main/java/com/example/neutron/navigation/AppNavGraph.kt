@@ -13,6 +13,7 @@ import com.example.neutron.screens.dashboard.DashboardScreen
 import com.example.neutron.screens.employee.AddEmployeeScreen
 import com.example.neutron.screens.employee.EmployeeDetailScreen
 import com.example.neutron.screens.employee.EmployeeListScreen
+import com.example.neutron.screens.kyc.KycFormScreen
 import com.example.neutron.screens.leave.AdminLeaveListScreen
 import com.example.neutron.screens.leave.LeaveRequestScreen
 import com.example.neutron.screens.leave.MyLeaveHistoryScreen
@@ -117,7 +118,24 @@ fun NavGraphBuilder.appNavGraph(
             employeeId = empId,
             employeeViewModel = eVM,
             attendanceViewModel = aVM,
-            onBack = { appNavController.popBackStack() }
+            onBack = { appNavController.popBackStack() },
+            onGenerateKyc = { id -> appNavController.navigate(NavRoutes.createKycRoute(id)) }
+        )
+    }
+
+    composable(
+        route = NavRoutes.KYC_FORM,
+        arguments = listOf(navArgument("employeeId") { type = NavType.StringType })
+    ) { backStackEntry ->
+        val empId = backStackEntry.arguments?.getString("employeeId") ?: ""
+
+        // We reuse EmployeeViewModel here to get the basic data (Name, Email)
+        val eVM: EmployeeViewModel = hiltViewModel()
+
+        KycFormScreen(
+            employeeId = empId,
+            onBack = { appNavController.popBackStack() },
+            employeeViewModel = eVM
         )
     }
 
