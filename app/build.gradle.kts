@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.neutron"
+    namespace = "com.example.protection"
     compileSdk = 35 // 🔹 Keep at 35 for stable build
 
     defaultConfig {
-        applicationId = "com.example.neutron"
+        applicationId = "com.example.protection"
         minSdk = 26 // 🔹 Recommended for modern features
         targetSdk = 35
         versionCode = 1

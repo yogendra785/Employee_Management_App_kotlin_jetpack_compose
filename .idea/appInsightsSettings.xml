@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.neutron" />
-                  <option name="mobileSdkAppId" value="1:30222693968:android:caed15a940a6385e77c355" />
-                  <option name="projectId" value="neutron-a82e2" />
-                  <option name="projectNumber" value="30222693968" />
+                  <option name="appId" value="com.example.protection" />
+                  <option name="mobileSdkAppId" value="1:682965386786:android:70aeecdfa49b9a84286c7b" />
+                  <option name="projectId" value="protection-f1430" />
+                  <option name="projectNumber" value="682965386786" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
