@@ -57,7 +57,7 @@ class LeaveRepository @Inject constructor(
         }
     }
 
-    // 🔹 NEW: Sync function to pull latest leaves from Cloud
+    // 🔹 EMPLOYEE SYNC: Pulls ONLY their own leaves
     suspend fun syncLeavesFromFirestore(employeeId: String) = withContext(Dispatchers.IO) {
         try {
             val snapshot = firestore.collection("leave_requests")
@@ -81,6 +81,32 @@ class LeaveRepository @Inject constructor(
             remoteLeaves.forEach { leaveDao.insertLeave(it) }
         } catch (e: Exception) {
             Log.e("LeaveRepo", "Sync Leaves Failed: ${e.message}")
+        }
+    }
+
+    // 🔹 ADMIN SYNC: Pulls EVERYONE'S leaves from Cloud
+    suspend fun syncAllLeavesFromFirestore() = withContext(Dispatchers.IO) {
+        try {
+            // Get ALL documents in the leave_requests collection
+            val snapshot = firestore.collection("leave_requests").get().await()
+
+            val remoteLeaves = snapshot.documents.mapNotNull { doc ->
+                LeaveEntity(
+                    employeeId = doc.getString("employeeId") ?: return@mapNotNull null,
+                    employeeName = doc.getString("employeeName") ?: "Unknown",
+                    startDate = doc.getLong("startDate") ?: 0L,
+                    endDate = doc.getLong("endDate") ?: 0L,
+                    reason = doc.getString("reason") ?: "",
+                    status = doc.getString("status") ?: "PENDING",
+                    requestDate = doc.getLong("requestDate") ?: 0L
+                )
+            }
+
+            // Save them all to the Admin's local Room database
+            remoteLeaves.forEach { leaveDao.insertLeave(it) }
+            Log.d("LeaveRepo", "Successfully synced ${remoteLeaves.size} leaves for Admin.")
+        } catch (e: Exception) {
+            Log.e("LeaveRepo", "Admin Sync Failed: ${e.message}")
         }
     }
 }

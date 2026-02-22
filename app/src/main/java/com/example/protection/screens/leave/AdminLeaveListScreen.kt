@@ -25,6 +25,10 @@ fun AdminLeaveListScreen(
     // Observing leaves from the database
     val allLeaves by viewModel.allLeaves.collectAsState(initial = emptyList())
 
+    LaunchedEffect(Unit) {
+        viewModel.syncAllLeavesForAdmin()
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(

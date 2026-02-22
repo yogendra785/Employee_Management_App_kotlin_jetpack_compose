@@ -33,6 +33,22 @@ class AttendanceViewModel @Inject constructor(
     private val _summary = MutableStateFlow(AttendanceSummary())
     val summary: StateFlow<AttendanceSummary> = _summary.asStateFlow()
 
+    // 🔹 Phase 2: Search & Filter State
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _filterStatus = MutableStateFlow<AttendanceStatus?>(null) // null means "All"
+    val filterStatus: StateFlow<AttendanceStatus?> = _filterStatus.asStateFlow()
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun onFilterChange(status: AttendanceStatus?) {
+        _filterStatus.value = status
+    }
+
+
     init {
         Log.d("ATTENDANCE_VM", "AttendanceViewModel Initialized")
     }
@@ -151,6 +167,26 @@ class AttendanceViewModel @Inject constructor(
         viewModelScope.launch {
             val attendance = Attendance(employeeId = employeeId, date = _selectedDate.value, status = status)
             repository.markAttendance(attendance)
+        }
+    }
+
+    // 🔹 NEW: Bulk action for Admins
+    fun markAllPresent(pendingEmployeeIds: List<String>) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // Loop through all pending IDs and mark them present
+                pendingEmployeeIds.forEach { empId ->
+                    val attendance = Attendance(
+                        employeeId = empId,
+                        date = _selectedDate.value,
+                        status = AttendanceStatus.PRESENT
+                    )
+                    repository.markAttendance(attendance)
+                }
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 
