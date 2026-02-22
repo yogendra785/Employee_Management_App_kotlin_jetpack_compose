@@ -2,10 +2,10 @@ package com.example.protection.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState // 🔹 Added
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll // 🔹 Added
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Badge
@@ -17,13 +17,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage // 🔹 Required for showing the image
 import com.example.protection.viewmodel.auth.AuthViewModel
 
 @Composable
@@ -35,10 +38,12 @@ fun ProfileScreen(
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
 
+    // 🔹 Use data from currentUser (if available) or defaults
     val displayName = currentUser?.name ?: "Yogendra Singh"
     val displayRole = currentUser?.role ?: "Admin"
     val displayEmail = currentUser?.email ?: "yshekhawat785@gmail.com"
-    val displayId = currentUser?.firebaseUid?.takeLast(8)?.uppercase() ?: "EMP-2027"
+    val displayId = currentUser?.employeeId ?: "EMP-2027"
+    val profileImagePath = currentUser?.imagePath // 🔹 Get path from DB
 
     Column(
         modifier = Modifier
@@ -52,7 +57,7 @@ fun ProfileScreen(
                 )
             )
             .padding(24.dp)
-            .verticalScroll(rememberScrollState()), // 🔹 ENABLED SCROLLING HERE
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Header
@@ -72,17 +77,31 @@ fun ProfileScreen(
             Surface(
                 modifier = Modifier.size(120.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.primaryContainer, // Lighter background for images
                 shadowElevation = 6.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = displayName.take(1).uppercase(),
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.ExtraBold
+                    // 📸 🔹 IMAGE LOGIC START
+                    if (!profileImagePath.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = profileImagePath,
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
                         )
-                    )
+                    } else {
+                        // Fallback to Initials
+                        Text(
+                            text = displayName.take(1).uppercase(),
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        )
+                    }
+                    // 📸 🔹 IMAGE LOGIC END
                 }
             }
             // Online Indicator
@@ -121,13 +140,12 @@ fun ProfileScreen(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             ProfileInfoCard(icon = Icons.Default.Person, label = "Full Name", value = displayName)
             ProfileInfoCard(icon = Icons.Default.Email, label = "Email Address", value = displayEmail)
-            ProfileInfoCard(icon = Icons.Default.Badge, label = "Unique Identifier", value = displayId)
+            ProfileInfoCard(icon = Icons.Default.Badge, label = "Employee ID", value = displayId)
         }
 
-        // 🔹 REMOVED modifier.weight(1f) to prevent crash
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Redesigned Logout Button
+        // Logout Button
         Button(
             onClick = { onLogout() },
             modifier = Modifier
@@ -147,7 +165,7 @@ fun ProfileScreen(
             )
         }
 
-        // Extra space at bottom for comfortable scrolling
+        // Extra space at bottom
         Spacer(modifier = Modifier.height(32.dp))
     }
 }

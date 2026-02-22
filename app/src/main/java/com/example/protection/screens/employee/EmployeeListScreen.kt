@@ -1,6 +1,7 @@
 package com.example.protection.screens.employee
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -16,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.protection.domain.model.Employee
@@ -29,9 +32,10 @@ fun EmployeeListScreen(
     viewModel: EmployeeViewModel,
     navigate: (String) -> Unit
 ) {
-    // 🔹 Reactive data collection
     val employees by viewModel.employees.collectAsState()
-    val stats by viewModel.dashboardStats.collectAsState()
+
+    // 🔹 STATE: Track which employee we want to delete to show the dialog
+    var employeeToDelete by remember { mutableStateOf<Employee?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -52,7 +56,7 @@ fun EmployeeListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* Implement search filter logic here */ }) {
+                    IconButton(onClick = { /* Implement search logic */ }) {
                         Icon(Icons.Default.Search, contentDescription = "Search")
                     }
                 },
@@ -83,10 +87,7 @@ fun EmployeeListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    // 🔹 Performance Summary Section
                     item {
-
-
                         Text(
                             text = "Manage Staff",
                             modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 4.dp),
@@ -96,7 +97,6 @@ fun EmployeeListScreen(
                         )
                     }
 
-                    // 🔹 Employee Cards Section
                     items(
                         items = employees,
                         key = { it.id }
@@ -106,17 +106,8 @@ fun EmployeeListScreen(
                                 employee = employee,
                                 onToggleActive = { viewModel.toggleEmployeeStatus(employee) },
                                 onDelete = {
-                                    viewModel.deleteEmployee(employee)
-                                    scope.launch {
-                                        val result = snackbarHostState.showSnackbar(
-                                            message = "${employee.name} removed",
-                                            actionLabel = "Undo",
-                                            duration = SnackbarDuration.Short
-                                        )
-                                        if (result == SnackbarResult.ActionPerformed) {
-                                            viewModel.undoDelete()
-                                        }
-                                    }
+                                    // 1. Set the state to show the dialog
+                                    employeeToDelete = employee
                                 },
                                 onClick = {
                                     navigate(NavRoutes.createDetailRoute(employee.employeeId))
@@ -126,6 +117,33 @@ fun EmployeeListScreen(
                     }
                 }
             }
+        }
+
+        // 🛡️ 🔹 SAFETY DIALOG: Only shows when employeeToDelete is not null
+        if (employeeToDelete != null) {
+            DeleteConfirmationDialog(
+                employeeName = employeeToDelete?.name ?: "",
+                onConfirm = {
+                    val target = employeeToDelete!! // Save reference before closing dialog
+                    employeeToDelete = null // Close dialog
+
+                    // Trigger Delete logic
+                    viewModel.deleteEmployee(target)
+
+                    // Show Undo Snackbar
+                    scope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "${target.name} removed",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            viewModel.undoDelete()
+                        }
+                    }
+                },
+                onDismiss = { employeeToDelete = null }
+            )
         }
     }
 }
@@ -201,6 +219,15 @@ fun EmployeeCard(
                 }
             }
 
+            // 🗑️ DELETE BUTTON (Added Trash Icon)
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
+                )
+            }
+
             // Quick Status Toggle
             Switch(
                 checked = employee.isActive,
@@ -213,7 +240,6 @@ fun EmployeeCard(
     }
 }
 
-
 @Composable
 fun EmptyStateView() {
     Column(
@@ -223,9 +249,8 @@ fun EmptyStateView() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // You can use a Lottie animation here for a "Premium" feel later
         Icon(
-            imageVector = androidx.compose.material.icons.Icons.Default.Group,
+            imageVector = Icons.Default.Group,
             contentDescription = null,
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.outlineVariant
@@ -243,4 +268,32 @@ fun EmptyStateView() {
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    employeeName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Employee?") },
+        text = {
+            Text("Are you sure you want to delete $employeeName? This will remove all their local records.")
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("Delete")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

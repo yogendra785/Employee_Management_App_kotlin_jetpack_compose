@@ -7,6 +7,7 @@ import com.example.protection.data.repository.EmployeeRepository
 import com.example.protection.domain.model.Employee
 import com.example.protection.domain.model.SalaryRecord
 import com.example.protection.utils.PdfGenerator
+import com.example.protection.utils.Resource // 🔹 IMPORT RESOURCE
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -25,7 +26,8 @@ data class SalaryUiState(
     val advance: String = "0",
     val netPayable: Double = 0.0,
     val isSuccess: Boolean = false,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val error: String? = null // Added error field just in case
 )
 
 @HiltViewModel
@@ -34,7 +36,18 @@ class SalaryViewModel @Inject constructor(
 ) : ViewModel() {
 
     // 1. Reactive stream of employees for the selection list
+    // 🔹 FIX: Unwrap the 'Resource' to get the plain List<Employee>
     val employees: StateFlow<List<Employee>> = repository.getAllEmployees()
+        .map { result ->
+            when (result) {
+                is Resource.Success -> result.data ?: emptyList()
+                is Resource.Error -> {
+                    // Optionally log error or update UI state
+                    emptyList()
+                }
+                is Resource.Loading -> emptyList() // Or keep previous list
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -46,22 +59,26 @@ class SalaryViewModel @Inject constructor(
     val salaryUiState = _salaryUiState.asStateFlow()
 
     fun onBaseSalaryChange(value: String) {
-        _salaryUiState.update { it.copy(baseSalary = value) }
+        val cleanValue = value.filter { it.isDigit() || it == '.' } // Basic input sanitization
+        _salaryUiState.update { it.copy(baseSalary = cleanValue) }
         calculateNet()
     }
 
     fun onAdvanceChange(value: String) {
-        _salaryUiState.update { it.copy(advance = value) }
+        val cleanValue = value.filter { it.isDigit() || it == '.' }
+        _salaryUiState.update { it.copy(advance = cleanValue) }
         calculateNet()
     }
 
     fun onAbsencesChange(value: String) {
-        _salaryUiState.update { it.copy(absences = value) }
+        val cleanValue = value.filter { it.isDigit() }
+        _salaryUiState.update { it.copy(absences = cleanValue) }
         calculateNet()
     }
 
     fun onDeductionRateChange(value: String) {
-        _salaryUiState.update { it.copy(deductionRate = value) }
+        val cleanValue = value.filter { it.isDigit() || it == '.' }
+        _salaryUiState.update { it.copy(deductionRate = cleanValue) }
         calculateNet()
     }
 
@@ -128,8 +145,12 @@ class SalaryViewModel @Inject constructor(
     fun generatePdf(context: Context, record: SalaryRecord, name: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val pdfGenerator = PdfGenerator(context)
-                pdfGenerator.generateSalarySlip(record, name)
+                try {
+                    val pdfGenerator = PdfGenerator(context)
+                    pdfGenerator.generateSalarySlip(record, name)
+                } catch (e: Exception) {
+                    // Handle PDF generation failure silently or log it
+                }
             }
         }
     }

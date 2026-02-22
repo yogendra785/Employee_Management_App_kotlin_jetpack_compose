@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.protection.navigation.NavRoutes
+import com.example.protection.utils.clickableDebounce
 import com.example.protection.viewmodel.auth.AuthState
 import com.example.protection.viewmodel.auth.AuthViewModel
 
@@ -183,8 +184,9 @@ fun DashboardCard(
     onClick: () -> Unit
 ) {
     ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+
+        modifier = Modifier.fillMaxWidth()
+            .clickableDebounce{onClick()},
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -221,6 +223,9 @@ fun DashboardCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     lineHeight = 16.sp
                 )
+
+
+
             }
         }
     }

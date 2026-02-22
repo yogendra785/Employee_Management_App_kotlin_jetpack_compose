@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.protection.domain.model.Site
 import com.example.protection.viewmodel.site.SiteViewModel
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SiteListScreen(

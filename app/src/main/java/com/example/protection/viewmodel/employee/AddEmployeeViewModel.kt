@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.protection.data.repository.EmployeeRepository
 import com.example.protection.domain.model.Employee
+import com.example.protection.utils.clean // 🔹 Ensure StringExtensions.kt is created
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
 
 @HiltViewModel
 class AddEmployeeViewModel @Inject constructor(
@@ -53,8 +55,7 @@ class AddEmployeeViewModel @Inject constructor(
     }
 
     fun onSalaryChange(newSalary: String) {
-        // Allow digits and a single dot
-        if (newSalary.isEmpty() || newSalary.count { it == '.' } <= 1 && newSalary.all { it.isDigit() || it == '.' }) {
+        if (newSalary.isEmpty() || (newSalary.count { it == '.' } <= 1 && newSalary.all { it.isDigit() || it == '.' })) {
             _uiState.update { it.copy(salary = newSalary) }
         }
     }
@@ -78,38 +79,55 @@ class AddEmployeeViewModel @Inject constructor(
 
     fun onSaveEmployee() {
         val currentState = uiState.value
+
+        // 🛡️ 1. DEBOUNCE: Stop if already loading
+        if (currentState.isLoading) return
+
         if (!validate(currentState)) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+
             try {
+                // 🛡️ 2. SANITIZATION: Clean inputs before saving
+                // Requires the .clean() extension we created in StringExtensions.kt
+                // If you haven't created it yet, use .trim().replace("\\s+".toRegex(), " ")
+                val cleanName = currentState.name.clean()
+                val cleanDepartment = currentState.department.clean()
+                val cleanEmail = currentState.email.trim()
+                val cleanId = currentState.employeeId.trim()
+                val cleanPassword = currentState.password.trim()
+
                 val employee = Employee(
-                    id = 0, // Let Room auto-generate the Long ID
-                    employeeId = currentState.employeeId.trim(), // String ID from UI
-                    name = currentState.name.trim(),
-                    email = currentState.email.trim(),
+                    id = 0,
+                    employeeId = cleanId,
+                    name = cleanName,
+                    email = cleanEmail,
                     salary = currentState.salary.toDoubleOrNull() ?: 0.0,
-                    department = currentState.department.trim(),
+                    department = cleanDepartment,
                     role = currentState.role.trim(),
                     isActive = currentState.isActive,
-                    firebaseUid = "", // Will be updated on sync or login
-                    password = currentState.password,
+                    firebaseUid = "",
+                    password = cleanPassword,
                     createdAt = System.currentTimeMillis()
                 )
 
+                // 📸 3. COMPRESSION: Handled automatically by Repository now!
                 repository.insertEmployeeWithImage(employee, currentState.selectedImageUri)
 
+                // ☁️ 4. SYNC
                 val user = FirebaseAuth.getInstance().currentUser
                 if (user != null) {
                     repository.syncEmployeesToCloud(user.uid)
-                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
-                    Log.e("ADD_VM", "User not authenticated with Firebase")
-                    _uiState.update { it.copy(isLoading = false, isSuccess = true) } // Save locally even if offline
+                    Log.e("ADD_VM", "User offline/unauthenticated. Saved locally.")
                 }
+
+                _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+
             } catch (e: Exception) {
                 Log.e("ADD_VM", "Save Error: ${e.message}")
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update { it.copy(isLoading = false) } // Ensure loading stops on error
             }
         }
     }

@@ -12,6 +12,9 @@ interface AttendanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAttendance(attendance: AttendanceEntity)
 
+    @Query("DELETE FROM attendance WHERE employeeId = :empId")
+    suspend fun deleteAttendanceByEmployee(empId: String)
+
     @Query("SELECT * FROM attendance WHERE date = :date ORDER BY id DESC")
     fun getAttendanceByDate(date: Long): Flow<List<AttendanceEntity>>
 

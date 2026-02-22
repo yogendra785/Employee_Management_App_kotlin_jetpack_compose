@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "682965386786",
+    "project_id": "protection-f1430",
+    "storage_bucket": "protection-f1430.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682965386786:android:70aeecdfa49b9a84286c7b",
+        "android_client_info": {
+          "package_name": "com.example.protection"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6pB5tMGTwsQpg_HWH8wSLO6_xYtDGmIg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

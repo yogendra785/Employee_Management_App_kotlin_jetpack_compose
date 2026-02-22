@@ -15,4 +15,7 @@ interface SalaryDao {
 
     @Query("SELECT * FROM salaries WHERE month = :month")
     fun getSalariesByMonth(month: String): Flow<List<SalaryEntity>>
+
+    @Query("DELETE FROM salaries WHERE employeeId = :empId")
+    suspend fun deleteSalaryByEmployee(empId: String)
 }

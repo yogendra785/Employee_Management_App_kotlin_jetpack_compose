@@ -7,6 +7,7 @@ import com.example.protection.data.repository.EmployeeRepository
 import com.example.protection.data.repository.SiteRepository
 import com.example.protection.domain.model.Employee
 import com.example.protection.domain.model.Site
+import com.example.protection.utils.Resource // 🔹 Import Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,7 +54,11 @@ class SiteDetailViewModel @Inject constructor(
     }
 
     private suspend fun refreshGuardLists(siteName: String) {
-        val allEmployees = employeeRepository.getAllEmployees().first()
+        // 🔹 FIX: Unwrap the Resource wrapper!
+        val result = employeeRepository.getAllEmployees().first()
+
+        // Extract the list safely. If loading or error, default to empty list.
+        val allEmployees = result.data ?: emptyList()
 
         // Filter: Who is here vs Who is not
         _deployedGuards.value = allEmployees.filter { it.department == siteName }

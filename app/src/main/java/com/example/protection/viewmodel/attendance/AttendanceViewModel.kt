@@ -5,7 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.protection.data.repository.AttendanceRepository
 import com.example.protection.data.repository.EmployeeRepository
-import com.example.protection.domain.model.* // 🔹 Imports AttendanceSummary & MonthlyStats from Step 1
+import com.example.protection.domain.model.*
+import com.example.protection.utils.Resource // 🔹 Make sure to import Resource
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -104,7 +105,10 @@ class AttendanceViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val employees = employeeRepository.getAllEmployees().first()
+                // 🔹 FIX: Unwrap the Resource wrapper
+                val result = employeeRepository.getAllEmployees().first()
+                val employees = result.data ?: emptyList() // Safe unwrap
+
                 var myProfile = employees.find { it.firebaseUid == uid }
 
                 if (myProfile == null) {
@@ -122,6 +126,7 @@ class AttendanceViewModel @Inject constructor(
                             password = snapshot.getString("password") ?: "",
                             isActive = snapshot.getBoolean("isActive") ?: true
                         )
+                        // Use insertEmployeeWithImage which is safe now
                         employeeRepository.insertEmployeeWithImage(remoteProfile, null)
                         myProfile = remoteProfile
                     }

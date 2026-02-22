@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.protection.data.repository.EmployeeRepository
 import com.example.protection.domain.model.DashboardStats
 import com.example.protection.domain.model.Employee
+import com.example.protection.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -13,62 +14,85 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
+// 🔹 New State Class to hold UI Data cleanly
+data class EmployeeListState(
+    val employees: List<Employee> = emptyList(),
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
 @HiltViewModel
 class EmployeeViewModel @Inject constructor(
     private val repository: EmployeeRepository
 ) : ViewModel() {
 
-    // Placeholder for the "Undo" feature to temporarily store a deleted record
     private var recentlyDeletedEmployee: Employee? = null
 
-    // 1. Dashboard Statistics State
+    // 1. Dashboard Stats State
     private val _dashboardStats = MutableStateFlow(DashboardStats())
     val dashboardStats: StateFlow<DashboardStats> = _dashboardStats.asStateFlow()
 
-    // 2. Reactive Employee List State
-    // Using stateIn ensures the list survives configuration changes (like rotation)
-    val employees: StateFlow<List<Employee>> =
-        repository.getAllEmployees()
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = emptyList()
-            )
+    // 2. Employee List State (Now handles Loading & Errors)
+    private val _employeeState = MutableStateFlow(EmployeeListState())
+    val employeeState: StateFlow<EmployeeListState> = _employeeState.asStateFlow()
+
+    // 🔹 Backward Compatibility:
+    // If your UI still observes 'employees', we map it here so you don't have to rewrite your UI immediately.
+    val employees: StateFlow<List<Employee>> = _employeeState
+        .map { it.employees }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        // Initial load of stats for the current month
+        loadEmployees()
         loadDashboardStats()
     }
 
-    /**
-     * Refreshes dashboard metrics.
-     * Called after any data change to keep the UI "Overview" accurate.
-     */
+    private fun loadEmployees() {
+        viewModelScope.launch {
+            repository.getAllEmployees().collect { result ->
+                when (result) {
+                    is Resource.Loading -> {
+                        _employeeState.update { it.copy(isLoading = true) }
+                    }
+                    is Resource.Success -> {
+                        _employeeState.update {
+                            it.copy(isLoading = false, employees = result.data ?: emptyList())
+                        }
+                    }
+                    is Resource.Error -> {
+                        _employeeState.update {
+                            it.copy(isLoading = false, error = result.message)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun loadDashboardStats() {
         viewModelScope.launch {
             val currentMonth = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date())
-            _dashboardStats.value = repository.getDashboardStats(currentMonth)
+
+            // 🔹 Handle Resource Wrapper for Stats too
+            val result = repository.getDashboardStats(currentMonth)
+            if (result is Resource.Success) {
+                _dashboardStats.value = result.data ?: DashboardStats()
+            }
         }
     }
 
-    //delete employee
-
-
-    /**
-     * Adds an employee. In a real-world app, we refresh stats immediately
-     * so the "Total Personnel" count updates without a manual pull-to-refresh.
-     */
     fun insertEmployee(employee: Employee) {
         viewModelScope.launch {
-            repository.insertEmployeeWithImage(employee, null)
-            loadDashboardStats()
+            try {
+                repository.insertEmployeeWithImage(employee, null)
+                loadDashboardStats()
+                // No need to reload employees manually; the Flow observer above updates automatically
+            } catch (e: Exception) {
+                _employeeState.update { it.copy(error = "Failed to add employee: ${e.message}") }
+            }
         }
     }
 
-    /**
-     * Deletes an employee locally. We cache them in recentlyDeletedEmployee
-     * to support the "Undo" snackbar feature.
-     */
     fun deleteEmployee(employee: Employee) {
         viewModelScope.launch {
             recentlyDeletedEmployee = employee
@@ -77,9 +101,6 @@ class EmployeeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Restores the last deleted employee.
-     */
     fun undoDelete() {
         recentlyDeletedEmployee?.let { employee ->
             viewModelScope.launch {
@@ -90,10 +111,6 @@ class EmployeeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Toggles Active/Inactive status.
-     * Updates both the database and the dashboard stats.
-     */
     fun toggleEmployeeStatus(employee: Employee) {
         viewModelScope.launch {
             repository.updateEmployeeStatus(
@@ -104,17 +121,14 @@ class EmployeeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Fetches details for a single employee (used in Detail Screen).
-     */
+    // 🔹 Updated to return Flow<Employee?> for Detail Screen
+    // We unwrap the Resource here to keep DetailScreen logic simple for now
     fun getEmployeeById(id: String): Flow<Employee?> {
-        return repository.getEmployeeById(id)
+        return repository.getEmployeeById(id).map { result ->
+            result.data
+        }
     }
 
-    /**
-     * Explicitly pushes local data to Firestore.
-     * In a production environment, this ensures the Admin's cloud backup is current.
-     */
     fun triggerCloudSync() {
         val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
         user?.let {
