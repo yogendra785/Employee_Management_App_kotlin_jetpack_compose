@@ -60,6 +60,7 @@ dependencies {
     // HILT Dependency Injection
     implementation(libs.hilt.android)
     implementation(libs.androidx.compose.runtime)
+   // implementation(libs.androidx.compose.remote.creation.core)
     kapt(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 
@@ -78,6 +79,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-storage")
 
     // 🔹 ADD THIS: The actual Crashlytics SDK (Not buildtools)
     implementation("com.google.firebase:firebase-crashlytics")

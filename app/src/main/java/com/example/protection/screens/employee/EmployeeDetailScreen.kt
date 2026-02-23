@@ -22,6 +22,8 @@ import com.example.protection.domain.model.AttendanceSummary
 import com.example.protection.domain.model.MonthlyStats
 import com.example.protection.viewmodel.attendance.AttendanceViewModel
 import com.example.protection.viewmodel.employee.EmployeeViewModel
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +77,7 @@ fun EmployeeDetailScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // Profile Image/Initials
+                        // Profile Image/Initials
                         Box(
                             modifier = Modifier
                                 .size(110.dp)
@@ -86,12 +89,24 @@ fun EmployeeDetailScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                it.name.take(1).uppercase(),
-                                style = MaterialTheme.typography.displayMedium,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+                            // 📸 🔹 IMAGE LOGIC: Show image if it exists, otherwise show initials
+                            if (!it.imagePath.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = it.imagePath,
+                                    contentDescription = "Profile Picture",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    it.name.take(1).uppercase(),
+                                    style = MaterialTheme.typography.displayMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

@@ -1,5 +1,6 @@
 package com.example.protection.viewmodel.auth
 
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.protection.data.repository.EmployeeRepository
@@ -10,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -43,6 +45,31 @@ class AuthViewModel @Inject constructor(
                 try {
                     val document = firestore.collection("users").document(user.uid).get().await()
                     val role = document.getString("role") ?: "EMPLOYEE"
+
+                    // 📸 🔹 THE FIX: Fetch the local user profile from Room so we get the imagePath!
+                    val result = employeeRepository.getAllEmployees().first()
+                    val allEmployees = result.data ?: emptyList()
+                    val localUser = allEmployees.find { it.firebaseUid == user.uid }
+
+                    if (localUser != null) {
+                        // We found the local record with the image path!
+                        _currentUser.value = localUser
+                    } else {
+                        // Fallback just in case the local database was cleared
+                        _currentUser.value = Employee(
+                            id = 0,
+                            employeeId = document.getString("employeeId") ?: "",
+                            firebaseUid = user.uid,
+                            name = document.getString("name") ?: "Unknown",
+                            email = document.getString("email") ?: "",
+                            role = role,
+                            department = document.getString("department") ?: "",
+                            salary = document.getDouble("salary") ?: 0.0,
+                            password = "",
+                            isActive = true
+                        )
+                    }
+
                     _authState.value = AuthState.Authenticated(role)
                 } catch (e: Exception) {
                     _authState.value = AuthState.Unauthenticated
@@ -52,8 +79,6 @@ class AuthViewModel @Inject constructor(
             }
         }
     }
-
-    // ... (Keep your login function exactly as it was) ...
     fun login(input: String, passwordInput: String) {
         if (input.contains("@")) adminLogin(input, passwordInput)
         else employeeLogin(input, passwordInput)
@@ -82,18 +107,33 @@ class AuthViewModel @Inject constructor(
             try {
                 val query = firestore.collection("users").whereEqualTo("employeeId", employeeId.trim()).get().await()
                 if (query.isEmpty) { _authState.value = AuthState.Error("ID Not Found"); return@launch }
+
                 val doc = query.documents.first()
                 if (doc.getString("password")?.trim() == passwordInput.trim()) {
                     val role = doc.getString("role") ?: "EMPLOYEE"
-                    syncUserToLocal(doc.getString("firebaseUid")?:doc.id, role, doc.getString("email")?:"", doc.getString("name")?:"", true, doc.getString("department")?:"General", doc.getDouble("salary")?:0.0, employeeId)
+                    // 🔹 THE FIX: Grab the imagePath from Firestore!
+                    val imagePath = doc.getString("imagePath")
+
+                    syncUserToLocal(
+                        uid = doc.getString("firebaseUid") ?: doc.id,
+                        role = role,
+                        email = doc.getString("email") ?: "",
+                        name = doc.getString("name") ?: "",
+                        isEmployeeLogin = true,
+                        department = doc.getString("department") ?: "General",
+                        salary = doc.getDouble("salary") ?: 0.0,
+                        employeeId = employeeId,
+                        imagePath = imagePath // 🔹 Pass it to Room!
+                    )
                 } else { _authState.value = AuthState.Error("Incorrect Password") }
             } catch (e: Exception) { _authState.value = AuthState.Error("Error: ${e.localizedMessage}") }
         }
     }
 
-    private suspend fun syncUserToLocal(uid: String, role: String, email: String, name: String, isEmployeeLogin: Boolean = false, department: String, salary: Double, employeeId: String) {
+    // 🔹 UPDATED signature to accept imagePath
+    private suspend fun syncUserToLocal(uid: String, role: String, email: String, name: String, isEmployeeLogin: Boolean = false, department: String, salary: Double, employeeId: String, imagePath: String? = null) {
         try {
-            val emp = Employee(firebaseUid = uid, name = name, email = email, role = role, department = department, salary = salary, password = "", employeeId = if(isEmployeeLogin) employeeId else "ADMIN", isActive = true, id = 0L)
+            val emp = Employee(firebaseUid = uid, name = name, email = email, role = role, department = department, salary = salary, password = "", employeeId = if(isEmployeeLogin) employeeId else "ADMIN", isActive = true, id = 0L, imagePath = imagePath)
             employeeRepository.insertEmployeeWithImage(emp, null)
             _currentUser.value = emp
             _authState.value = AuthState.Authenticated(role)

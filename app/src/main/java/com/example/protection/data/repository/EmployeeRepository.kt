@@ -48,7 +48,7 @@ class EmployeeRepository @Inject constructor(
                 emit(Resource.Success(employees))
             }
         } catch (e: Exception) {
-            // 🔹 FIX: Added <List<Employee>>
+
             emit(Resource.Error<List<Employee>>("Failed to load staff: ${e.localizedMessage}"))
         }
     }.flowOn(Dispatchers.IO)
@@ -73,10 +73,37 @@ class EmployeeRepository @Inject constructor(
 
     // --- Standard Suspend Functions ---
 
+    // 📸 1. NEW: Uploads the image to Firebase and returns the public internet URL
+    private suspend fun uploadImageToFirebase(uri: Uri, employeeId: String): String? = withContext(Dispatchers.IO) {
+        try {
+            // Compress the image first to save data/time
+            val compressedBytes = ImageUtils.compressImage(context, uri) ?: return@withContext null
+
+            // Connect to Firebase Storage
+            val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().reference
+            val imageRef = storageRef.child("profile_images/${employeeId}_${System.currentTimeMillis()}.jpg")
+
+            // Upload the compressed bytes
+            imageRef.putBytes(compressedBytes).await()
+
+            // Get the permanent public internet URL
+            val downloadUrl = imageRef.downloadUrl.await().toString()
+            return@withContext downloadUrl
+        } catch (e: Exception) {
+            Log.e("EmployeeRepo", "Firebase Storage Upload Failed: ${e.message}")
+            return@withContext null
+        }
+    }
+
     suspend fun insertEmployeeWithImage(employee: Employee, imageUri: Uri?) = withContext(Dispatchers.IO) {
         try {
-            val finalPath = imageUri?.let { saveImageToInternalStorage(it) }
-            val employeeToSave = if (finalPath != null) employee.copy(imagePath = finalPath) else employee
+            // Upload to Firebase and get the public URL
+            val finalUrl = imageUri?.let { uploadImageToFirebase(it, employee.employeeId) }
+
+            // Attach the Firebase URL to the employee record
+            val employeeToSave = if (finalUrl != null) employee.copy(imagePath = finalUrl) else employee
+
+            // Save to local Room database
             dao.insertEmployee(employeeToSave.toEmployeeEntity())
         } catch (e: Exception) {
             Log.e("REPO", "Insert Failed: ${e.message}")
@@ -187,7 +214,8 @@ class EmployeeRepository @Inject constructor(
                 "role" to entity.role,
                 "password" to entity.password,
                 "department" to entity.department,
-                "isActive" to entity.isActive
+                "isActive" to entity.isActive,
+                "imagePath" to (entity.imagePath ?: "")
             )
             try {
                 firestore.collection("users").document(entity.email).set(data).await()

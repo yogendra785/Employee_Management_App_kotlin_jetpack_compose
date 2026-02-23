@@ -14,6 +14,7 @@ material3 = "1.4.0"
 cameraCamera2Pipe = "1.6.0-beta01"
 firebaseCrashlyticsBuildtools = "3.0.6"
 runtime = "1.10.3"
+remoteCreationCore = "1.0.0-alpha04"
 
 [libraries]
 # Hilt
@@ -54,6 +55,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-camera-camera2-pipe = { group = "androidx.camera", name = "camera-camera2-pipe", version.ref = "cameraCamera2Pipe" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
+androidx-compose-remote-creation-core = { group = "androidx.compose.remote", name = "remote-creation-core", version.ref = "remoteCreationCore" }
 
 [plugins]
 # Ensure these names are exactly what you call in the alias() block
